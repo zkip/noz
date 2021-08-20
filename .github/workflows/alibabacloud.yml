@@ -51,7 +51,7 @@ jobs:
               uses: actions/checkout@v2
 
             - name: test
-              uses: echo "Hello github actions."
+              run: echo Hello github actions.
 
         # # 1.1 Login to ACR
         # - name: Login to ACR with the AccessKey pair
