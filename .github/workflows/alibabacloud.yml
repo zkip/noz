@@ -27,12 +27,12 @@ on:
 
 # Environment variables available to all jobs and steps in this workflow.
 env:
-  REGION_ID: cn-hangzhou
-  REGISTRY: registry.cn-hangzhou.aliyuncs.com
-  NAMESPACE: namespace
-  IMAGE: repo
+  REGION_ID: cn-hongkong
+  REGISTRY: registry.cn-hongkong.aliyuncs.com
+  NAMESPACE: zkip
+  IMAGE: noz
   TAG: ${{ github.sha }}
-  ACK_CLUSTER_ID: clusterID
+  ACK_CLUSTER_ID: c20e02c8c37ad49f99c78e0c37dc7a806
   ACK_DEPLOYMENT_NAME: noz-deployment
 
 jobs:
