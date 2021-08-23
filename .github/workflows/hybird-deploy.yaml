@@ -61,7 +61,7 @@ jobs:
           host: "${{ secrets.CLUSTER_HOST }}"
           remote: /root/docker_auth/config.json
           local: "${{ env.DOCKER_CONFIG }}/config.json"
-          privateKey: "${{ secrets.CLUSTER_CREDENTIAL }}"
+          privateKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRSmU2Av7CLvy7iEP6+HfqUYRLru3NAoDynxZJ8jM62QFthxswx1I9Fv61mmBV9bWgHNWGXihc38hBKJQgfQ2LvXA7h80uNcrcQK8PY75GhcfxVF9hJJho21yi0umXshJ2VTmjMXlKlSbJ3B2gsSshYfrOs9Jj2EY5fGOYMM5M/lV1tUMrBl/0L2rqfpnHOsCqn0dY8hKpr9RwuJMXkm8oRisNKE63s/qqSkfiSjyNPh5xYfNUdg8D5u9Pnn22z8AbElIlD+uSTFSxh7W2irGfYKPe+Ng0i6afm78+us+mJ8THS0w5NekZR6dqKxQgs44bJqoEE+K/rwHDM4UBRteFFU5miusdaFLjwJ+ETfzDnVCpYqVzDttIrLK9tRK7+ZLgTDzLVWeUarW0NP7kj+Ud3088rvftTX4zQ9XnEQ/FDZSPfdaCiEcl4qOFrqxxFHstSnJpY1gUP8igurfPf+TXabXn0rTTsd35jTU9TZ+9OdVjiFP271Hi+EI7SoIMwMc= zpox@DESKTOP-J0STCU8"
       # # Buid and push image to ACR
       # - name: Build and push image to ACR
       #   run: |
