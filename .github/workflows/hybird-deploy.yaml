@@ -52,7 +52,7 @@ jobs:
           access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
           access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
-      Transfter auth file
+      # Transfter auth file
       - name: Transfer files to target
         uses: garygrossgarten/github-action-scp@release
         with:
