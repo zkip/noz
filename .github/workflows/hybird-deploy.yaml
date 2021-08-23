@@ -52,16 +52,19 @@ jobs:
           access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
           access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
+        name: "debug"
+        run: echo "$GITHUB_SERVER_URL"
+
       # Transfter auth file
-      - name: Transfer files to target
-        uses: garygrossgarten/github-action-scp@release
-        with:
-          rmRemote: true
-          username: root
-          host: "${{ secrets.CLUSTER_HOST }}"
-          remote: /root/docker_auth/config.json
-          local: "${{ env.GITHUB_DOCKER_CONFIG }}"
-          privateKey: "${{ secrets.CLUSTER_CREDENTIAL }}"
+      # - name: Transfer files to target
+      #   uses: garygrossgarten/github-action-scp@release
+      #   with:
+      #     rmRemote: true
+      #     username: root
+      #     host: "${{ secrets.CLUSTER_HOST }}"
+      #     remote: /root/docker_auth/config.json
+      #     local: "${{ env.GITHUB_DOCKER_CONFIG }}"
+      #     privateKey: "${{ secrets.CLUSTER_CREDENTIAL }}"
       # # Buid and push image to ACR
       # - name: Build and push image to ACR
       #   run: |
