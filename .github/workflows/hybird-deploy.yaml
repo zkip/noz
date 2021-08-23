@@ -78,5 +78,12 @@ jobs:
         
       # Set ACK context
       - name: Transfer files to target
-        run: |
-          cat $DOCKER_CONFIG
+        uses: garygrossgarten/github-action-scp@release
+        with:
+          rmRemote: true
+          username: root
+          host: "${{ secrets.CLUSTER_HOST }}"
+          remote: /root/docker_auth/config.json
+          local: $DOCKER_CONFIG
+          privateKey: "${{ secrets.CLUSTER_CREDENTIAL }}"
+          
