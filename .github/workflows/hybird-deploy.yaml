@@ -84,6 +84,6 @@ jobs:
           username: root
           host: "${{ secrets.CLUSTER_HOST }}"
           remote: /root/docker_auth/config.json
-          local: "${{env.DOCKER_CONFIG}}"
+          local: "${{GITHUB_ENV.DOCKER_CONFIG}}"
           privateKey: "${{ secrets.CLUSTER_CREDENTIAL }}"
           
