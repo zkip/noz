@@ -60,7 +60,7 @@ jobs:
           username: root
           host: "${{ secrets.CLUSTER_HOST }}"
           remote: /root/docker_auth/config.json
-          local: "${{GITHUB_DOCKER_CONFIG}}"
+          local: "$GITHUB_DOCKER_CONFIG"
           privateKey: "${{ secrets.CLUSTER_CREDENTIAL }}"
       # # Buid and push image to ACR
       # - name: Build and push image to ACR
