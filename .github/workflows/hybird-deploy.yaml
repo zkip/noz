@@ -55,8 +55,7 @@ jobs:
       # Transfter auth file
       - name: Transfer files to target
         run: |
-          echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa
-          scp -i ./id_rsa ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker_auth/config.json
+          echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa && scp -i ./id_rsa ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker_auth/config.json
       # # Buid and push image to ACR
       # - name: Build and push image to ACR
       #   run: |
