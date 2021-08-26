@@ -89,6 +89,9 @@ jobs:
       - name: Build Image
         run: |
           docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+
+      - name: Push Image
+        run: |
           docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
 
   deploy:
