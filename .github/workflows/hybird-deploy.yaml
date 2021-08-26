@@ -32,11 +32,9 @@ env:
   NAMESPACE: zkip
   IMAGE: noz
   TAG: ${{ github.sha }}
-  ACK_CLUSTER_ID: c20e02c8c37ad49f99c78e0c37dc7a806
-  ACK_DEPLOYMENT_NAME: noz-deployment
 
 jobs:
-  build:
+  ready:
     runs-on: ubuntu-latest
     environment: production
 
@@ -52,22 +50,64 @@ jobs:
           access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
           access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
-      # Transfter auth file
+      # Transfter ACR credential file
       - name: Transfer files to target
         run: |
           echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa && chmod 600 id_rsa
           mkdir -p ~/.ssh && echo "StrictHostKeyChecking=no" >> ~/.ssh/config
-          scp -i ./id_rsa -r ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker_auth/config.json
+          scp -i ./id_rsa -r ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker-config.json
 
-  pull:
+      # share ACR credential file
+      - name: Upload ACR credential
+        uses: actions/upload-artifact@v2
+        with:
+          name: ACR-credential
+          path: "${{ env.DOCKER_CONFIG }}/config.json"
+
+      # share cluster credential file
+      - name: Upload cluster credential
+        uses: actions/upload-artifact@v2
+        with:
+          name: cluster-credential
+          path: id_rsa
+
+  build-and-push:
     runs-on: ubuntu-latest
     environment: production
-    needs: [build]
+    needs: [ready]
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get docker credential file
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-credential
+          path: docker-config.json
+
+      - name: Build Image
+        run: |
+          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [build-and-push]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get Credential
+        uses: actions/download-artifact@v2
+        with:
+          name: cluster-credential
+
       - name: Pull image
         run: |
-          ssh -i ./id_rsa root@${{ secrets.CLUSTER_HOST }} "export DOCKER_CONFIG=/root/docker_auth && docker pull registry.cn-hongkong.aliyuncs.com/zkip/noz:v0.0.8"
+          ssh -i cluster-credential root@${{ secrets.CLUSTER_HOST }} "docker --config docker-config.json pull $REGISTRY/$NAMESPACE/$IMAGE:$TAG"
       # # Buid and push image to ACR
       # - name: Build and push image to ACR
       #   run: |
