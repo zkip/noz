@@ -51,7 +51,7 @@ jobs:
           access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
       # Transfter ACR credential file
-      - name: Transfer files to target
+      - name: Transfer files to host
         run: |
           echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa && chmod 600 id_rsa
           mkdir -p ~/.ssh && echo "StrictHostKeyChecking=no" >> ~/.ssh/config
@@ -115,4 +115,4 @@ jobs:
 
       - name: Pull image
         run: |
-          ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "docker --config docker-config.json pull $REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+          ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "mkdir -p docker-config && mv docker-config.json docker-config/config.json && docker --config docker-config pull $REGISTRY/$NAMESPACE/$IMAGE:$TAG"
