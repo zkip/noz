@@ -59,6 +59,11 @@ jobs:
           mkdir -p ~/.ssh && echo "StrictHostKeyChecking=no" >> ~/.ssh/config
           scp -i ./id_rsa -r ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker_auth/config.json
 
+  pull:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
       - name: Pull image
         run: |
           ssh -i ./id_rsa root@${{ secrets.CLUSTER_HOST }} "export DOCKER_CONFIG=/root/docker_auth && docker pull registry.cn-hongkong.aliyuncs.com/zkip/noz:v0.0.8"
@@ -76,7 +81,6 @@ jobs:
       #     access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
       #     repository: "${{ env.NAMESPACE }}/${{ env.IMAGE }}"
       #     tag: "${{ env.TAG }}"
-
   # deploy:
   #   runs-on: ubuntu-latest
   #   environment: production
