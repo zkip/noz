@@ -108,6 +108,10 @@ jobs:
         with:
           name: cluster-credential
 
+      - name: Prepare an appropriate connection environment
+        run: |
+          mkdir -p ~/.ssh && echo "StrictHostKeyChecking=no" >> ~/.ssh/config
+
       - name: Pull image
         run: |
           ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "docker --config docker-config.json pull $REGISTRY/$NAMESPACE/$IMAGE:$TAG"
