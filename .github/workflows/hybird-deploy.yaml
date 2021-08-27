@@ -50,11 +50,14 @@ jobs:
           access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
           access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
+      - name: Prepare an appropriate connection environment
+        run: |
+          echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa
+          ./.github/scripts/prepareConnectionEnv.sh
+
       # Transfter ACR credential file
       - name: Transfer files to host
         run: |
-          echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa && chmod 600 id_rsa
-          mkdir -p ~/.ssh && echo "StrictHostKeyChecking=no" >> ~/.ssh/config
           scp -i id_rsa -r ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker-config.json
 
       # share ACR credential file
@@ -110,9 +113,8 @@ jobs:
 
       - name: Prepare an appropriate connection environment
         run: |
-          chmod 600 id_rsa
-          mkdir -p ~/.ssh && echo "StrictHostKeyChecking=no" >> ~/.ssh/config
+          ./.github/scripts/prepareConnectionEnv.sh
 
       - name: Pull image
         run: |
-          ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "mkdir -p docker-config && mv docker-config.json docker-config/config.json && docker --config docker-config pull $REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+          ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "bash -s" < ./.github/scripts/deploy.sh "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
