@@ -53,6 +53,7 @@ jobs:
       - name: Prepare an appropriate connection environment
         run: |
           echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa
+          chmod u+x ./.github/scripts/prepareConnectionEnv.sh
           ./.github/scripts/prepareConnectionEnv.sh
 
       # Transfter ACR credential file
@@ -113,6 +114,7 @@ jobs:
 
       - name: Prepare an appropriate connection environment
         run: |
+          chmod u+x ./.github/scripts/prepareConnectionEnv.sh
           ./.github/scripts/prepareConnectionEnv.sh
 
       - name: Pull image
