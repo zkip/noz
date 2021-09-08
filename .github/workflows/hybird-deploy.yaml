@@ -91,11 +91,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Debug image name
+        run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
           
-      - name: Update image
-        uses: actions-hub/kubectl@master
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-        with:
-          args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:5a518d289779b3e95c5b5638d05846041aac6bca
+      # - name: Update image
+      #   uses: actions-hub/kubectl@master
+      #   env:
+      #     KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      #   with:
+      #     args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:5a518d289779b3e95c5b5638d05846041aac6bca
           # args: set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
