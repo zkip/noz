@@ -104,7 +104,7 @@ jobs:
       - name: Update image
         uses: steebchen/kubectl@v2.0.0
         with:
-          command: set image deployments/frontend-deploy frontend=$REGISTRY/$NAMESPACE/$IMAGE:$TAG
+          command: set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
 
       - name: Lookup pods
         uses: steebchen/kubectl@v2.0.0
