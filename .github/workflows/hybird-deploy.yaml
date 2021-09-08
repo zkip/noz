@@ -34,86 +34,67 @@ env:
   TAG: ${{ github.sha }}
 
 jobs:
-  test:
+  ready:
     runs-on: ubuntu-latest
     environment: production
 
     steps:
-      - name: test-kubectl
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # - name: Prepare scripts
+      #   uses: chomod +x ./.github/scripts/*.sh
+
+      # Login to ACR
+      - name: Login to ACR with the AccessKey pair
+        uses: aliyun/acr-login@v1
+        with:
+          region-id: "${{ env.REGION_ID }}"
+          access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
+
+      # share ACR credential file
+      - name: Upload ACR credential
+        uses: actions/upload-artifact@v2
+        with:
+          name: ACR-credential
+          path: "${{ env.DOCKER_CONFIG }}/config.json"
+
+  build-and-push: 
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [ready]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get docker credential file
+        uses: actions/download-artifact@v2
+        with:
+          name: ACR-credential
+          path: docker-config.json
+
+      - name: Build Image
+        run: |
+          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+
+      - name: Push Image
+        run: |
+          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [build-and-push]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+          
+      - name: Update image
         uses: actions-hub/kubectl@master
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          args: get pods
-    
-  # ready:
-  #   runs-on: ubuntu-latest
-  #   environment: production
-
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-
-  #     - name: Prepare scripts
-  #       uses: chomod +x ./.github/scripts/*.sh
-
-  #     # Login to ACR
-  #     - name: Login to ACR with the AccessKey pair
-  #       uses: aliyun/acr-login@v1
-  #       with:
-  #         region-id: "${{ env.REGION_ID }}"
-  #         access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
-  #         access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
-
-  #     # share ACR credential file
-  #     - name: Upload ACR credential
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: ACR-credential
-  #         path: "${{ env.DOCKER_CONFIG }}/config.json"
-
-  # build-and-push: 
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   needs: [ready]
-
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-
-  #     - name: Get docker credential file
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: ACR-credential
-  #         path: docker-config.json
-
-  #     - name: Build Image
-  #       run: |
-  #         docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
-
-  #     - name: Push Image
-  #       run: |
-  #         docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
-
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   needs: [build-and-push]
-
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-
-  #     - name: Get Credential
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: cluster-credential
-
-  #     - name: Prepare an appropriate connection environment
-  #       run: |
-  #         chmod u+x ./.github/scripts/prepareConnectionEnv.sh
-  #         ./.github/scripts/prepareConnectionEnv.sh
-
-  #     - name: Pull image and Deploy
-  #       run: |
-  #         ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "bash -s" < ./.github/scripts/deploy.sh "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+          args: kubectl set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
