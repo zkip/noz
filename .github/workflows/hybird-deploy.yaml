@@ -86,7 +86,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-    needs: [build-and-push]
+    # needs: [build-and-push]
 
     steps:
       - name: Checkout
