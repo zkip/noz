@@ -96,19 +96,18 @@ jobs:
         run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
 
       - name: Lookup secrets
-        uses: actions-hub/kubectl@master
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        uses: steebchen/kubectl@v2.0.0
         with:
-          args: get secret
+          config: ${{ secrets.KUBE_CONFIG }}
+          command: get secret
 
       - name: Update image
-        uses: actions-hub/kubectl@master
+        uses: steebchen/kubectl@v2.0.0
         with:
-          args: set image deployments/frontend-deploy frontend=$REGISTRY/$NAMESPACE/$IMAGE:$TAG
+          command: set image deployments/frontend-deploy frontend=$REGISTRY/$NAMESPACE/$IMAGE:$TAG
 
       - name: Lookup pods
-        uses: actions-hub/kubectl@master
+        uses: steebchen/kubectl@v2.0.0
         with:
-          args: get pod
+          command: rollout status deployment/frontend-deploy
           # args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:5e3cc777fa2f9ef0da24feb380a2ea6bcf19860a
