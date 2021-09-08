@@ -34,89 +34,86 @@ env:
   TAG: ${{ github.sha }}
 
 jobs:
-  ready:
+  test:
     runs-on: ubuntu-latest
     environment: production
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      # Login to ACR
-      - name: Login to ACR with the AccessKey pair
-        uses: aliyun/acr-login@v1
+      - name: test-kubectl
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          region-id: "${{ env.REGION_ID }}"
-          access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
-          access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
+          args: get pods
+    
+  # ready:
+  #   runs-on: ubuntu-latest
+  #   environment: production
 
-      - name: Prepare an appropriate connection environment
-        run: |
-          echo "${{ secrets.CLUSTER_CREDENTIAL }}" >> id_rsa
-          chmod u+x ./.github/scripts/prepareConnectionEnv.sh
-          ./.github/scripts/prepareConnectionEnv.sh
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
 
-      # Transfter ACR credential file
-      - name: Transfer files to host
-        run: |
-          scp -i id_rsa -r ${{ env.DOCKER_CONFIG }}/config.json root@${{ secrets.CLUSTER_HOST }}:/root/docker-config.json
+  #     - name: Prepare scripts
+  #       uses: chomod +x ./.github/scripts/*.sh
 
-      # share ACR credential file
-      - name: Upload ACR credential
-        uses: actions/upload-artifact@v2
-        with:
-          name: ACR-credential
-          path: "${{ env.DOCKER_CONFIG }}/config.json"
+  #     # Login to ACR
+  #     - name: Login to ACR with the AccessKey pair
+  #       uses: aliyun/acr-login@v1
+  #       with:
+  #         region-id: "${{ env.REGION_ID }}"
+  #         access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
+  #         access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
-      # share cluster credential file
-      - name: Upload cluster credential
-        uses: actions/upload-artifact@v2
-        with:
-          name: cluster-credential
-          path: id_rsa
+  #     # share ACR credential file
+  #     - name: Upload ACR credential
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: ACR-credential
+  #         path: "${{ env.DOCKER_CONFIG }}/config.json"
 
-  build-and-push:
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [ready]
+  # build-and-push: 
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   needs: [ready]
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Get docker credential file
-        uses: actions/download-artifact@v2
-        with:
-          name: ACR-credential
-          path: docker-config.json
+  #     - name: Get docker credential file
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: ACR-credential
+  #         path: docker-config.json
 
-      - name: Build Image
-        run: |
-          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+  #     - name: Build Image
+  #       run: |
+  #         docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
 
-      - name: Push Image
-        run: |
-          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+  #     - name: Push Image
+  #       run: |
+  #         docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
 
-  deploy:
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [build-and-push]
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   needs: [build-and-push]
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Get Credential
-        uses: actions/download-artifact@v2
-        with:
-          name: cluster-credential
+  #     - name: Get Credential
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: cluster-credential
 
-      - name: Prepare an appropriate connection environment
-        run: |
-          chmod u+x ./.github/scripts/prepareConnectionEnv.sh
-          ./.github/scripts/prepareConnectionEnv.sh
+  #     - name: Prepare an appropriate connection environment
+  #       run: |
+  #         chmod u+x ./.github/scripts/prepareConnectionEnv.sh
+  #         ./.github/scripts/prepareConnectionEnv.sh
 
-      - name: Pull image
-        run: |
-          ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "bash -s" < ./.github/scripts/deploy.sh "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+  #     - name: Pull image and Deploy
+  #       run: |
+  #         ssh -i id_rsa root@${{ secrets.CLUSTER_HOST }} "bash -s" < ./.github/scripts/deploy.sh "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"

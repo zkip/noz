@@ -2,4 +2,4 @@
 
 chmod 600 id_rsa
 mkdir -p ~/.ssh
-echo "StrictHostKeyChecking=no" >>~/.ssh/config
+echo "StrictHostKeyChecking=no" >> ~/.ssh/config

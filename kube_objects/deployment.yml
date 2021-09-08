@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noz-frontend-deploy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: noz
+  template:
+    metadata:
+      labels:
+        app: noz
+    spec:
+      containers:
+        - name: noz-frontend
+          image: registry.cn-hongkong.aliyuncs.com/zkip/noz:v0.0.8
+          ports:
+            - containerPort: 3000
