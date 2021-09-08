@@ -106,4 +106,9 @@ jobs:
         uses: actions-hub/kubectl@master
         with:
           args: set image deployments/frontend-deploy frontend=$REGISTRY/$NAMESPACE/$IMAGE:$TAG
+
+      - name: Lookup pods
+        uses: actions-hub/kubectl@master
+        with:
+          args: get pod
           # args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:5e3cc777fa2f9ef0da24feb380a2ea6bcf19860a
