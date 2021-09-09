@@ -39,14 +39,17 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      # - name: Checkout
+      #   uses: actions/checkout@v2
 
       - name: Prepare Cluster Token
         run: mkdir -p $HOME/.kube; echo "$KUBE_CONFIG" | base64 -d > $HOME/.kube/config
 
-      - name: Kubectl Test
-        run: kubectl version
+      - name: Echo token
+        run: cat $HOME/.kube/config
+
+      # - name: Kubectl Test
+      #   run: kubectl version
   # ready:
   #   runs-on: ubuntu-latest
   #   environment: production
