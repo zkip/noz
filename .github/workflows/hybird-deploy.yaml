@@ -46,7 +46,7 @@ jobs:
         run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
 
       - name: Prepare Cluster Token
-        run: .github/scripts/kubectl_test.sh
+        run: .github/scripts/kubectl_test.sh ${{ secrets.KUBE_CONFIG }}
 
       - name: Echo token
         run: cat $HOME/.kube/config
