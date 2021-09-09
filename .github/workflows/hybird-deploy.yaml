@@ -37,7 +37,6 @@ jobs:
   ready:
     runs-on: ubuntu-latest
     environment: production
-
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -46,72 +45,61 @@ jobs:
         run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
 
       - name: Prepare Cluster Token
-        run: mkdir -p $HOME/.kube && echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+        run: .github/scripts/prepare_cluster_token.sh ${{ secrets.KUBE_CONFIG }}
 
-      - name: Echo token
-        run: cat $HOME/.kube/config
+      # Login to ACR
+      - name: Login to ACR with the AccessKey pair
+        uses: aliyun/acr-login@v1
+        with:
+          region-id: "${{ env.REGION_ID }}"
+          access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
 
-      - name: Kubectl Test
-        run: kubectl version
-  # ready:
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-  #     # - name: Prepare scripts
-  #     #   uses: chomod +x ./.github/scripts/*.sh
-  #     # Login to ACR
-  #     - name: Login to ACR with the AccessKey pair
-  #       uses: aliyun/acr-login@v1
-  #       with:
-  #         region-id: "${{ env.REGION_ID }}"
-  #         access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
-  #         access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
-  #     # share ACR credential file
-  #     - name: Upload ACR credential
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: ACR-credential
-  #         path: "${{ env.DOCKER_CONFIG }}/config.json"
-  # build-and-push:
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   needs: [ready]
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-  #     - name: Get docker credential file
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: ACR-credential
-  #         path: docker-config.json
-  #     - name: Build Image
-  #       run: |
-  #         docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
-  #     - name: Push Image
-  #       run: |
-  #         docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   needs: [build-and-push]
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-  #     - name: Debug image name
-  #       run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
-  #     - name: Lookup secrets
-  #       uses: steebchen/kubectl@v2.0.0
-  #       with:
-  #         config: ${{ secrets.KUBE_CONFIG }}
-  #         command: get secret
-  #     - name: Update image
-  #       uses: steebchen/kubectl@v2.0.0
-  #       with:
-  #         command: set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
-  #     - name: Lookup pods
-  #       uses: steebchen/kubectl@v2.0.0
-  #       with:
-  #         command: rollout status deployment/frontend-deploy
-  #         # args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:268e6b07022374049196de8d0181016a9bb68c90
+      # share ACR credential file
+      - name: Upload ACR credential
+        uses: actions/upload-artifact@v2
+        with:
+          name: ACR-credential
+          path: "${{ env.DOCKER_CONFIG }}/config.json"
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [ready]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Get docker credential file
+        uses: actions/download-artifact@v2
+        with:
+          name: ACR-credential
+          path: docker-config.json
+      - name: Build Image
+        run: |
+          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+      - name: Push Image
+        run: |
+          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [build-and-push]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare scripts
+        run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
+
+      - name: Prepare Cluster Token
+        run: .github/scripts/prepare_cluster_token.sh ${{ secrets.KUBE_CONFIG }}
+
+      - name: Debug image name
+        run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
+
+      - name: Update image
+        run: kubectl set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+      - name: Lookup status
+        run: kubectl rollout status deployment/frontend-deploy
