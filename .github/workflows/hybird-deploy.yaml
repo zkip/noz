@@ -42,10 +42,11 @@ jobs:
       # - name: Checkout
       #   uses: actions/checkout@v2
 
+      - name: Prepare scripts
+        uses: chomod +x ./.github/scripts/*.sh
+
       - name: Prepare Cluster Token
-        run: |
-          mkdir -p $HOME/.kube
-          echo "$KUBE_CONFIG" | base64 -d
+        run: ./.github/scripts/kubectl_test.sh
 
       - name: Echo token
         run: cat $HOME/.kube/config
