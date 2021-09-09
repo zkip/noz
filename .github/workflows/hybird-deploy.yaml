@@ -92,9 +92,6 @@ jobs:
       - name: Prepare Cluster Token
         run: .github/scripts/prepare_cluster_token.sh "${{ secrets.KUBE_CONFIG }}"
 
-      - name: Debug image name
-        run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
-
       - name: Update image
         run: kubectl set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
 
