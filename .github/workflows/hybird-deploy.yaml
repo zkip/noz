@@ -42,72 +42,72 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      # - name: Prepare scripts
-      #   uses: chomod +x ./.github/scripts/*.sh
+      - name: Kubectl Test
+        run: kubectl version
 
-      # Login to ACR
-      - name: Login to ACR with the AccessKey pair
-        uses: aliyun/acr-login@v1
-        with:
-          region-id: "${{ env.REGION_ID }}"
-          access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
-          access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
-
-      # share ACR credential file
-      - name: Upload ACR credential
-        uses: actions/upload-artifact@v2
-        with:
-          name: ACR-credential
-          path: "${{ env.DOCKER_CONFIG }}/config.json"
-
-  build-and-push:
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [ready]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Get docker credential file
-        uses: actions/download-artifact@v2
-        with:
-          name: ACR-credential
-          path: docker-config.json
-
-      - name: Build Image
+      - name: Test
         run: |
-          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
-
-      - name: Push Image
-        run: |
-          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
-
-  deploy:
-    runs-on: ubuntu-latest
-    environment: production
-    needs: [build-and-push]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Debug image name
-        run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
-
-      - name: Lookup secrets
-        uses: steebchen/kubectl@v2.0.0
-        with:
-          config: ${{ secrets.KUBE_CONFIG }}
-          command: get secret
-
-      - name: Update image
-        uses: steebchen/kubectl@v2.0.0
-        with:
-          command: set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
-
-      - name: Lookup pods
-        uses: steebchen/kubectl@v2.0.0
-        with:
-          command: rollout status deployment/frontend-deploy
-          # args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:5e3cc777fa2f9ef0da24feb380a2ea6bcf19860a
+          curl -L https://storage.googleapis.com/kubernetes-release/release/v$KUBE_VERSION/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
+          chmod +x /usr/local/bin/kubectl
+  # ready:
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
+  #     # - name: Prepare scripts
+  #     #   uses: chomod +x ./.github/scripts/*.sh
+  #     # Login to ACR
+  #     - name: Login to ACR with the AccessKey pair
+  #       uses: aliyun/acr-login@v1
+  #       with:
+  #         region-id: "${{ env.REGION_ID }}"
+  #         access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
+  #         access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
+  #     # share ACR credential file
+  #     - name: Upload ACR credential
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: ACR-credential
+  #         path: "${{ env.DOCKER_CONFIG }}/config.json"
+  # build-and-push:
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   needs: [ready]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
+  #     - name: Get docker credential file
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: ACR-credential
+  #         path: docker-config.json
+  #     - name: Build Image
+  #       run: |
+  #         docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+  #     - name: Push Image
+  #       run: |
+  #         docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   needs: [build-and-push]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
+  #     - name: Debug image name
+  #       run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
+  #     - name: Lookup secrets
+  #       uses: steebchen/kubectl@v2.0.0
+  #       with:
+  #         config: ${{ secrets.KUBE_CONFIG }}
+  #         command: get secret
+  #     - name: Update image
+  #       uses: steebchen/kubectl@v2.0.0
+  #       with:
+  #         command: set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+  #     - name: Lookup pods
+  #       uses: steebchen/kubectl@v2.0.0
+  #       with:
+  #         command: rollout status deployment/frontend-deploy
+  #         # args: set image deployments/frontend-deploy frontend=registry.cn-hongkong.aliyuncs.com/zkip/noz:268e6b07022374049196de8d0181016a9bb68c90
