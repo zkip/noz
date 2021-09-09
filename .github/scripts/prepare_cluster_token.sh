@@ -1,3 +1,3 @@
-echo "$1"
-# mkdir -p $HOME/.kube
+mkdir -p $HOME/.kube
+echo $1
 #  | base64 -d > $HOME/.kube/config
