@@ -45,7 +45,7 @@ jobs:
         run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
 
       - name: Prepare Cluster Token
-        run: .github/scripts/prepare_cluster_token.sh ${{ secrets.KUBE_CONFIG }}
+        run: .github/scripts/prepare_cluster_token.sh "${{ secrets.KUBE_CONFIG }}"
 
       # Login to ACR
       - name: Login to ACR with the AccessKey pair
@@ -79,7 +79,7 @@ jobs:
       - name: Build Image
         run: |
           docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
-          
+
       - name: Push Image
         run: |
           docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
@@ -96,7 +96,7 @@ jobs:
         run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
 
       - name: Prepare Cluster Token
-        run: .github/scripts/prepare_cluster_token.sh ${{ secrets.KUBE_CONFIG }}
+        run: .github/scripts/prepare_cluster_token.sh "${{ secrets.KUBE_CONFIG }}"
 
       - name: Debug image name
         run: echo $REGISTRY/$NAMESPACE/$IMAGE:$TAG
