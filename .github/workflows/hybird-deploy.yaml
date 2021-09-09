@@ -69,14 +69,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
       - name: Get docker credential file
         uses: actions/download-artifact@v2
         with:
           name: ACR-credential
           path: docker-config.json
+
       - name: Build Image
         run: |
           docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+          
       - name: Push Image
         run: |
           docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
