@@ -43,7 +43,7 @@ jobs:
       #   uses: actions/checkout@v2
 
       - name: Prepare scripts
-        uses: chomod +x ./.github/scripts/*.sh
+        uses: chmod +x ./.github/scripts/*.sh
 
       - name: Prepare Cluster Token
         run: ./.github/scripts/kubectl_test.sh
