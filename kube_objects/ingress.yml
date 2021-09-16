@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    #
+  name: test-ingress
+spec:
+  rules:
+    # - host: noz.zkip.cc
+      http:
+        paths:
+          - backend:
+              serviceName: my-emqx
+              servicePort: 3000
+            path: /
+          - backend:
+              serviceName: my-emqx
+              servicePort: 8083
+            path: /mqtt

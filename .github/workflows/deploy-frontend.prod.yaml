@@ -1,0 +1,83 @@
+name: Build and Deploy to ACK
+
+on:
+  release:
+    types: [created]
+
+  workflow_dispatch:
+
+# Environment variables available to all jobs and steps in this workflow.
+env:
+  REGION_ID: cn-hongkong
+  REGISTRY: registry.cn-hongkong.aliyuncs.com
+  NAMESPACE: zkip
+  IMAGE: noz
+  TAG: ${{ github.sha }}
+
+jobs:
+  ready:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set env
+        run: echo "TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      # Login to ACR
+      - name: Login to ACR with the AccessKey pair
+        uses: aliyun/acr-login@v1
+        with:
+          region-id: "${{ env.REGION_ID }}"
+          access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
+
+      # share ACR credential file
+      - name: Upload ACR credential
+        uses: actions/upload-artifact@v2
+        with:
+          name: ACR-credential
+          path: "${{ env.DOCKER_CONFIG }}/config.json"
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [ready]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get docker credential file
+        uses: actions/download-artifact@v2
+        with:
+          name: ACR-credential
+          path: docker-config.json
+
+      - name: Build Image
+        run: |
+          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+
+      - name: Push Image
+        run: |
+          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [build-and-push]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare scripts
+        run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
+
+      - name: Prepare Cluster Token
+        run: .github/scripts/prepare_cluster_token.sh "${{ secrets.KUBE_CONFIG }}"
+
+      - name: Update image
+        run: kubectl set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+      - name: Lookup status
+        run: kubectl rollout status deployment/frontend-deploy

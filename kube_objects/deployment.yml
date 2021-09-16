@@ -14,6 +14,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: registry.cn-hongkong.aliyuncs.com/zkip/noz:v0.0.8
+          image: registry.cn-hongkong.aliyuncs.com/zkip/noz:canary
           ports:
             - containerPort: 3000
+      imagePullSecrets:
+        - name: noz-acr-token
