@@ -16,6 +16,6 @@ spec:
     - http:
         paths:
           - backend:
-              serviceName: noz-tb0
+              serviceName: tb0-service
               servicePort: 3000
             path: /
