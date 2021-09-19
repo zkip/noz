@@ -18,7 +18,7 @@ env:
 jobs:
   ready:
     runs-on: ubuntu-latest
-    environment: canary
+    environment: development
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -40,7 +40,7 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
-    environment: canary
+    environment: development
     needs: [ready]
     steps:
       - name: Checkout
@@ -63,7 +63,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    environment: canary
+    environment: development
     needs: [build-and-push]
     steps:
       - name: Checkout
