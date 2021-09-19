@@ -17,5 +17,3 @@ spec:
           image: registry.cn-hongkong.aliyuncs.com/zkip/noz:canary
           ports:
             - containerPort: 3000
-      imagePullSecrets:
-        - name: noz-acr-token
