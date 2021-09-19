@@ -1,4 +1,4 @@
-name: Build and Deploy to TKE
+name: Core production deploy
 
 on:
   push:

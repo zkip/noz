@@ -1,4 +1,4 @@
-name: Build and Deploy to TKE
+name: TB0 canary deploy
 
 on:
   push:
