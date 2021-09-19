@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-service
+  name: tb0-service
 
 spec:
   selector:
-    app: noz
+    app: noz-tb0
   
   type: LoadBalancer
   

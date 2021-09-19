@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-deploy
+  name: tb0-deploy
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: noz
+      app: noz-tb0
   template:
     metadata:
       labels:
-        app: noz
+        app: noz-tb0
     spec:
       containers:
-        - name: frontend
-          image: registry.cn-hongkong.aliyuncs.com/zkip/noz:canary
+        - name: tb0
+          image: registry.cn-hongkong.aliyuncs.com/zkip/noz-tb0:canary
           ports:
             - containerPort: 3000

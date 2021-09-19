@@ -2,18 +2,20 @@ apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    #
-  name: test-ingress
+    ingress.cloud.tencent.com/direct-access: "false"
+    kubernetes.io/ingress.class: qcloud
+    kubernetes.io/ingress.extensiveParameters: '{"AddressIPVersion":"IPV4"}'
+    kubernetes.io/ingress.https-rules: "null"
+    kubernetes.io/ingress.qcloud-loadbalance-id: lb-rziqeebw
+    kubernetes.io/ingress.rule-mix: "false"
+  name: thunder
+  namespace: noz
 spec:
   rules:
-    - host: noz.zkip.cc
-      http:
+    # - host: noz.zkip.cc
+    - http:
         paths:
           - backend:
-              serviceName: my-emqx
+              serviceName: noz-tb0
               servicePort: 3000
             path: /
-          - backend:
-              serviceName: my-emqx
-              servicePort: 8083
-            path: /mqtt
