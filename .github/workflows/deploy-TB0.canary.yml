@@ -1,0 +1,82 @@
+name: Build and Deploy to TKE
+
+on:
+  push:
+    branches:
+      - tb0-canary
+
+  workflow_dispatch:
+
+# Environment variables available to all jobs and steps in this workflow.
+env:
+  REGION_ID: cn-hongkong
+  REGISTRY: registry.cn-hongkong.aliyuncs.com
+  NAMESPACE: zkip
+  IMAGE: noz-tb0
+  TAG: canary
+
+jobs:
+  ready:
+    runs-on: ubuntu-latest
+    environment: canary
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # Login to ACR
+      - name: Login to ACR with the AccessKey pair
+        uses: aliyun/acr-login@v1
+        with:
+          region-id: "${{ env.REGION_ID }}"
+          access-key-id: "${{ secrets.ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ACCESS_KEY_SECRET }}"
+
+      # share ACR credential file
+      - name: Upload ACR credential
+        uses: actions/upload-artifact@v2
+        with:
+          name: ACR-credential
+          path: "${{ env.DOCKER_CONFIG }}/config.json"
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: canary
+    needs: [ready]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get docker credential file
+        uses: actions/download-artifact@v2
+        with:
+          name: ACR-credential
+          path: docker-config.json
+
+      - name: Build Image
+        run: |
+          cd packages/terminal-browser
+          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+
+      - name: Push Image
+        run: |
+          docker --config docker-config.json push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: canary
+    needs: [build-and-push]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare scripts
+        run: chmod +x .github/scripts/permission.sh && .github/scripts/permission.sh
+
+      - name: Prepare Cluster Token
+        run: .github/scripts/prepare_cluster_token.sh "${{ secrets.KUBE_CONFIG }}"
+
+      - name: Update image
+        run: kubectl set image deployments/tb0-deploy tb0="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+      - name: Lookup status
+        run: kubectl rollout status deployments/tb0-deploy

@@ -1,4 +1,4 @@
-name: Build and Deploy to ACK
+name: Build and Deploy to TKE
 
 on:
   release:
@@ -11,7 +11,7 @@ env:
   REGION_ID: cn-hongkong
   REGISTRY: registry.cn-hongkong.aliyuncs.com
   NAMESPACE: zkip
-  IMAGE: noz
+  IMAGE: noz-tb0
   TAG: ${{ github.sha }}
 
 jobs:
@@ -56,6 +56,7 @@ jobs:
 
       - name: Build Image
         run: |
+          cd packages/terminal-browser
           docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
 
       - name: Push Image
@@ -80,7 +81,7 @@ jobs:
         run: .github/scripts/prepare_cluster_token.sh "${{ secrets.KUBE_CONFIG }}"
 
       - name: Update image
-        run: kubectl set image deployments/frontend-deploy frontend="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+        run: kubectl set image deployments/tb0-deploy tb0="$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
 
       - name: Lookup status
-        run: kubectl rollout status deployment/frontend-deploy
+        run: kubectl rollout status deployments/tb0-deploy
