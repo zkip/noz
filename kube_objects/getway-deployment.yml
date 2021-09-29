@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: getway-deploy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: noz-getway
+  template:
+    metadata:
+      labels:
+        app: noz-getway
+    spec:
+      containers:
+        - name: getway
+          image: registry.cn-hongkong.aliyuncs.com/zkip/noz-getway:canary
+          ports:
+            - containerPort: 9000
+          imagePullPolicy: Always

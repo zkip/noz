@@ -15,5 +15,6 @@ spec:
       containers:
         - name: tb0
           image: registry.cn-hongkong.aliyuncs.com/zkip/noz-tb0:canary
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000

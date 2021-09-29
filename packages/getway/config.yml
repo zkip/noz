@@ -1,0 +1,13 @@
+authorization: auth-service
+getway: getway-service
+
+non-auth:
+  - res-service
+
+routes:
+  tb0-service:
+    - "."
+  core-service:
+    - ^/api
+  res-service:
+    - ^/res

@@ -1,14 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: tb0-service
+  name: auth-service
 
 spec:
   selector:
-    app: noz-tb0
+    app: noz-auth
 
   type: ClusterIP
 
   ports:
-    - port: 3000
-      targetPort: 3000
+    - port: 7000
+      targetPort: 7000
+

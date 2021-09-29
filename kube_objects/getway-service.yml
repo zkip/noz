@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: getway-service
+  annotations:
+    service.cloud.tencent.com/direct-access: "true" # 是否手动指定负载均衡服务器
+    service.kubernetes.io/loadbalance-id: lb-rqqi5edc # 负载均衡服务器ID
+    service.kubernetes.io/qcloud-loadbalancer-internal-subnetid: subnet-mwcqszp6 # 子网服务器ID
+    service.kubernetes.io/qcloud-loadbalancer-clusterid: cls-ol6ip7w8 # 集群ID
+
+spec:
+  selector:
+    app: noz-getway
+
+  type: LoadBalancer
+
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 30076
+
