@@ -5,6 +5,8 @@ packages/*/node_modules
 packages/*/.pnp
 packages/*/.pnp.js
 
+packages/core/data
+
 # next.js
 packages/*/.next
 packages/*/out
