@@ -1,0 +1,31 @@
+@use "$styles/variables" as *;
+
+@value hup: red;
+
+.root {
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 2px 12px 0 rgb(0 0 0 / 10%);
+	border: 1px solid #737373;
+	background: white;
+	border-radius: 3px;
+	padding: 24px;
+	position: relative;
+
+	& .close-btn {
+		position: absolute;
+		top: 0;
+		right: 0;
+		cursor: pointer;
+		padding: 8px;
+		margin: -8px + 24px;
+		color: $color-text-main;
+		font-size: 12px;
+
+		&:hover {
+			color: #909399;
+		}
+	}
+}
+
+// @type

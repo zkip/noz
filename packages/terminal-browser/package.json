@@ -1,15 +1,35 @@
 {
-  "name": "noz-tb0",
-  "version": "0.1.1",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "next": "^11.0.0",
-    "react": "17.0.2",
-    "react-dom": "17.0.2"
-  }
+	"name": "noz-tb0",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"cpt:add": "sh ./scripts/addComponent.sh",
+		"part:add": "sh ./scripts/addPart.sh",
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint"
+	},
+	"dependencies": {
+		"@ant-design/icons": "^4.6.2",
+		"@types/react-dom": "^17.0.9",
+		"install": "^0.13.0",
+		"next": "11.0.1",
+		"react": "17.0.2",
+		"react-dom": "17.0.2",
+		"recoil": "^0.3.1",
+		"swr": "^0.5.6",
+		"vditor": "^3.8.7"
+	},
+	"devDependencies": {
+		"@types/prop-types": "^15.7.4",
+		"@types/react": "^17.0.27",
+		"@types/recoil": "^0.0.9",
+		"eslint": "7.31.0",
+		"eslint-config-next": "11.0.1",
+		"prop-types": "^15.7.2",
+		"sass": "^1.35.2",
+		"typed-css-modules": "^0.7.0",
+		"typescript": "4.3.5"
+	}
 }

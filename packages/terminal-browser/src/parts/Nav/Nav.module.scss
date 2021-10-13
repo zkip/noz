@@ -1,0 +1,15 @@
+.root {
+	display: flex;
+	align-items: center;
+	position: relative;
+
+	& > :global(:not(.space) + :not(.space)) {
+		margin-left: 50px;
+	}
+}
+
+.logo {
+	height: 40px;
+}
+
+// @type

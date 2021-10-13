@@ -1,0 +1,8 @@
+import { genCSDPairFromStyles } from "@/utils/classname";
+import styles from "./${NAME}.module.scss";
+
+const { clsS, diodeS } = genCSDPairFromStyles(styles);
+
+export default function ${NAME}({}) {
+	return <div {...clsS("root")}></div>
+}

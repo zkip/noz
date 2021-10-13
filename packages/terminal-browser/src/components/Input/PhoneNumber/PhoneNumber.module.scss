@@ -1,0 +1,63 @@
+@use "$styles/variables" as *;
+
+.root {
+	background: white;
+
+	display: grid;
+	grid-template: auto auto / auto 1fr;
+
+	font-size: 14px;
+	& .area-code,
+	& .phone-number {
+		grid-column: auto / span 1;
+	}
+
+	&.invalid {
+		// color: $color-text-danger;
+
+		& .decoration-line {
+			border-color: $color-text-danger;
+		}
+	}
+
+	& > * {
+		grid-area: auto / span 2;
+		font-size: inherit;
+		padding: 8px 0;
+	}
+
+	& .error-message {
+		padding: 0;
+	}
+}
+
+.area-code {
+	&::before {
+		content: "+";
+	}
+	&::after {
+		content: "";
+		padding-left: 8px;
+		border-right: 1px solid #333;
+	}
+}
+
+.phone-number {
+	outline: none;
+	border: none;
+	padding-left: 8px;
+}
+
+.decoration-line {
+	border: none;
+	height: 0;
+	padding: 0;
+	border-bottom: 1px solid #333;
+	padding-bottom: 0;
+}
+
+.error-message {
+	color: $color-text-danger;
+}
+
+// @type

@@ -1,0 +1,46 @@
+// @type
+
+.root {
+	display: grid;
+	grid-template-columns: auto;
+	grid-auto-flow: row;
+	place-content: stretch;
+	place-items: center;
+	flex-direction: column;
+
+	& :global() > *:not(.tray) {
+		// padding: 0 24px;
+		margin: 0 24px;
+		width: 100%;
+		max-width: 990px;
+
+		& + * {
+			padding-top: 24px;
+		}
+
+		&::after {
+			content: "";
+			display: block;
+			clear: both;
+		}
+	}
+}
+
+.nav,
+.tray {
+	position: sticky;
+	top: 0;
+	grid-area: 1 / 1 / 2 / 2;
+	height: 80px;
+}
+
+.tray {
+	width: 100%;
+	pointer-events: none;
+	background: red;
+	opacity: 0.3;
+}
+
+.content {
+	height: 1200px;
+}

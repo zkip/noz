@@ -1,0 +1,3 @@
+.vditor .vditor-wysiwyg pre.vditor-reset:focus {
+    background-color: transparent;
+}

@@ -1,0 +1,39 @@
+@use "$styles/variables" as *;
+
+.root {
+	background: white;
+
+	display: flex;
+	flex-flow: column nowrap;
+
+	font-size: 14px;
+	line-height: 1;
+
+	&.invalid {
+		color: $color-text-danger;
+	}
+
+	& > * {
+		font-size: inherit;
+		line-height: inherit;
+	}
+}
+
+.passwd {
+	border: none;
+	background: none;
+	outline: none;
+	padding: 8px 0;
+}
+
+.decoration-line {
+	border: none;
+	height: 0;
+	border-bottom: 1px solid #333;
+}
+
+.error-message {
+	color: $color-text-danger;
+}
+
+// @type

@@ -1,0 +1,11 @@
+{
+	"prettier.tabWidth": 4,
+	"editor.tabSize": 4,
+	"editor.detectIndentation": false,
+	"editor.insertSpaces": false,
+	"editor.useTabStops": true,
+	"css.lint.validProperties": ["composes"],
+	"css.lint.unknownAtRules": "ignore",
+	"scss.lint.validProperties": ["composes"],
+	"scss.lint.unknownAtRules": "ignore"
+}

@@ -1,0 +1,108 @@
+@use "$styles/variables" as *;
+
+.root {
+	background: white;
+
+	display: grid;
+	grid-template: auto auto / 1fr auto;
+	font-size: 14px;
+	line-height: 1;
+
+	& > * {
+		grid-area: auto / span 2;
+		font-size: inherit;
+		line-height: inherit;
+	}
+
+	& > .code-input,
+	& > .code-indicator {
+		grid-area: auto / span 1;
+	}
+
+	&.invalid {
+		& .decoration-line {
+			border-color: $color-text-danger;
+		}
+	}
+}
+
+.code-indicator {
+	padding: 8px 0;
+	color: beige;
+	text-align: right;
+	cursor: pointer;
+	&.avaliable {
+		color: red;
+	}
+}
+
+.counter {
+	color: red;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+.send-btn {
+	color: red;
+	display: inline-grid;
+	grid-template: auto / auto;
+	place-items: center end;
+	place-content: center;
+	font-size: inherit;
+	text-align: center;
+	padding: 0;
+	margin: 0;
+	line-height: inherit;
+	outline: none;
+	cursor: inherit;
+
+	border: none;
+	background: none;
+
+	& .waiting-indicator {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	& .text {
+		opacity: 1;
+	}
+
+	& > * {
+		grid-area: 1 / 2;
+	}
+
+	&.waiting {
+		& .waiting-indicator {
+			opacity: 1;
+		}
+
+		& .text {
+			opacity: 0;
+		}
+	}
+}
+
+.code-input {
+	margin: 0;
+	padding: 8px 0;
+	padding-bottom: 8px;
+	border: none;
+	background: none;
+	outline: none;
+	font-size: inherit;
+	padding-right: 8px;
+}
+
+.decoration-line {
+	border: none;
+	height: 0;
+	border-bottom: 1px solid #333;
+}
+
+.error-message {
+	color: $color-text-danger;
+	height: 20px;
+}
+
+// @type

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# workspace pwd
+cd $(dirname $0)
+cd "../"
+
+ComponentPath=src/components/$1
+
+rm -r $ComponentPath
