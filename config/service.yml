@@ -1,0 +1,24 @@
+authorization: auth-service
+redis: redis-service
+mysql: mysql-service
+getway: getway-service
+
+non-auth:
+  - ^/auth
+
+routes:
+  tb0-service:
+    - "."
+  core-service:
+    - ^/image NEW
+    - ^/image DEL
+    - ^/image GET
+    - ^/image SET
+    - ^/image ACTION
+    - ^/paper NEW
+    - ^/paper DEL
+    - ^/paper GET
+    - ^/paper SET
+    - ^/paper ACTION
+  auth-service:
+    - ^/auth

@@ -1,0 +1,7 @@
+tb0-service: 3000
+core-service: 7703
+auth-service: 7000
+res-service: 7704
+getway-service: 9000
+redis-service: 6379
+mysql-service: 3306
