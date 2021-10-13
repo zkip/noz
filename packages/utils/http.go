@@ -82,7 +82,13 @@ func (hc *NOZHTTPServer) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 func (hc *NOZHTTPServer) handleError(wr http.ResponseWriter, r *http.Request) {
 	hu := GenHandlerUtils(wr)
 
-	RunIfOK(recover() != nil, hu.SendInternalServerErr)
+	err := recover()
+
+	if err != nil {
+		panic(err)
+	}
+
+	RunIfOK(err != nil, hu.SendInternalServerErr)
 }
 
 const (
