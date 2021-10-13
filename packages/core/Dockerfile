@@ -12,8 +12,8 @@ COPY core/src/*.go ./core/
 
 RUN cd core && go build -o /core .
 
-EXPOSE 9000
+EXPOSE 7703
 
-ENV PORT=9000
+ENV PORT=7703
 
 CMD [ "/core" ]
