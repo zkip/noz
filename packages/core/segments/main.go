@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/twinj/uuid"
@@ -18,6 +19,11 @@ import (
 )
 
 type R = model.Result
+
+type setterImageAliasOption struct {
+	ID   string
+	Name string
+}
 
 type setterPaperOption struct {
 	ID      string
@@ -47,18 +53,53 @@ type PaperDataOption struct {
 }
 
 type PaperMetaListResult struct {
-	R
 	Data []*PaperMetaData
 }
 
 type ImageMetaListResult struct {
-	R
 	Data []*ImageMetaData
 }
 
 type PaperListResult struct {
-	R
 	Data []PaperData
+}
+
+type AccountResult struct {
+	ID       string
+	Nickname string
+	Email    string
+}
+
+type AccountPatchOption struct {
+	ID       string
+	Nickname string
+	Email    string
+}
+
+type Quota struct {
+	Capcity uint64
+	Used    uint64
+}
+
+func (q *Quota) doDelta(size int64) error {
+	used := int64(q.Used) + size
+
+	if used+size < 0 {
+		used = 0
+	}
+
+	if used+size > int64(q.Capcity) {
+		return &QuotaLackErr{q}
+	}
+
+	q.Used = uint64(used)
+
+	return nil
+}
+
+type QuotaResult struct {
+	Capcity uint64
+	Used    uint64
 }
 
 type NoStoreResourceTypeErr struct {
@@ -67,6 +108,14 @@ type NoStoreResourceTypeErr struct {
 
 func (ne *NoStoreResourceTypeErr) Error() string {
 	return fmt.Sprintf("%s is no store resource type.", utils.GetResoureceTypeIdent(ne.rType))
+}
+
+type QuotaLackErr struct {
+	quota *Quota
+}
+
+func (qe *QuotaLackErr) Error() string {
+	return fmt.Sprintf("Quota is lacked (%d/%d)).", qe.quota.Capcity, qe.quota.Used)
 }
 
 var maxUploadSize int64 = 1024 * 1024 * 1024 * 1024
@@ -84,6 +133,19 @@ var resource_store_path = map[uint8]string{
 var (
 	ResourceNonExistErr_E = &ResourceNonExistErr{}
 )
+
+func getQuota(targetPRI string) (*Quota, error) {
+	db := utils.GetMySqlDB()
+	var q = &Quota{}
+
+	row := db.QueryRow("select capcity, used from tQuotas where targetPRI = ?", targetPRI)
+	err := row.Scan(&q.Capcity, &q.Used)
+	if err != nil {
+		return nil, err
+	}
+
+	return q, nil
+}
 
 func getSupportedMimeType(mtype *mimetype.MIME) bool {
 	ok, _ := regexp.MatchString(`^image`, mtype.String())
@@ -124,6 +186,8 @@ func removeResource(takerPRI, rID string, rType uint8) error {
 	db := utils.GetMySqlDB()
 	resourcePRI := utils.GenPRI(rID, rType)
 
+	var err error
+
 	tx, err := db.Begin()
 	utils.PanicIfErr(err)
 
@@ -132,6 +196,32 @@ func removeResource(takerPRI, rID string, rType uint8) error {
 			if err := tx.Rollback(); err != nil {
 				panic(err)
 			}
+		}
+	}
+
+	var quotaUsage uint64
+	row := tx.QueryRow("select quotaUsage from tResources where rID = ?", rID)
+	err = row.Scan(&quotaUsage)
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+
+	quota, err := getQuota(takerPRI)
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+
+	needntUpdate := quota.Used == 0
+
+	err = quota.doDelta(-int64(quotaUsage))
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+
+	if !needntUpdate {
+		_, err := tx.Exec("update tQuotas set used = ? where targetPRI = ?", quota.Used, takerPRI)
+		if utils.RunIfErr(err, rollback) {
+			return err
 		}
 	}
 
@@ -207,6 +297,7 @@ func getResourceSum(sum string) (bool, string, error) {
 }
 
 func newImageProvider(rw http.ResponseWriter, r *http.Request) {
+	hu := utils.GenHandlerUtils(rw)
 	rjp := utils.ResponseJsonProvider{Rw: rw}
 
 	r.Body = http.MaxBytesReader(rw, r.Body, maxUploadSize)
@@ -238,34 +329,36 @@ func newImageProvider(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mimeType := mimetype.Detect(fileBytes)
-
 	rID := uuid.NewV4().String()
-
+	size := int64(len(fileBytes))
+	mimeType := mimetype.Detect(fileBytes)
 	userID := utils.ExtractUserIDFromRequst(r)
 	ownerPRI := utils.GenPRI(userID, utils.Resource_type_user)
-
 	resourcePRI := utils.GenPRI(rID, utils.Resource_type_image)
 
-	fmt.Println("Size: ", len(fileBytes), mimeType, "by: ", ownerPRI)
+	quota, err := getQuota(ownerPRI)
+	utils.PanicIfErr(err)
+
+	err = quota.doDelta(size)
+	if utils.RunIfPickErr(err, &QuotaLackErr{})(hu.SendOptionErr, hu.ByErrJSON(39)) {
+		return
+	}
+	utils.PanicIfErr(err)
 
 	db := utils.GetMySqlDB()
 	if getSupportedMimeType(mimeType) {
 		saveImage(fileBytes, rID)
 
-		_, err := db.Exec("insert into tResources(rid, ownerPRI, mimeType, sum, kind) values( ?, ?, ?, ?, ? )", rID, ownerPRI, mimeType.String(), sum, utils.Resource_type_image)
-
-		if err != nil {
-			panic(err)
-		}
+		_, err := db.Exec("insert into tResources(rid, ownerPRI, quotaUsage, mimeType, sum, kind) values( ?, ?, ?, ?, ?, ? )", rID, ownerPRI, size, mimeType.String(), sum, utils.Resource_type_image)
+		utils.PanicIfErr(err)
 
 		_, err = db.Exec("insert into tPermissions(which, resourcePRI) values( ?, ? )", visibility_private, resourcePRI)
+		utils.PanicIfErr(err)
 
-		if err != nil {
-			panic(err)
-		}
+		_, err = db.Exec("update tQuotas set used = ? where targetPRI = ?", quota.Used, ownerPRI)
+		utils.PanicIfErr(err)
 
-		rjp.Send(0, rID)
+		hu.SendJSON(0, rID)
 	}
 }
 
@@ -318,6 +411,38 @@ func imageRemoverProvider(rw http.ResponseWriter, r *http.Request) {
 	if utils.RunIfPickErr(err, &utils.NotFoundErr{})() {
 		return
 	}
+	utils.PanicIfErr(err)
+}
+
+func imageAliasSetterProvider(rw http.ResponseWriter, r *http.Request) {
+	hc := utils.GenHandlerUtils(rw)
+	db := utils.GetMySqlDB()
+
+	var option setterImageAliasOption
+
+	if utils.RunIfErr(utils.ExtractJsonBodyFromRequest(r, &option), hc.SendOptionErr, hc.ByErrJSON(17)) {
+		// JSON解析失败
+		return
+	}
+
+	// check args
+	if utils.RunIfOK(option.ID == "", hc.SendOptionErr, hc.ByErrJSON(18)) {
+		return
+	}
+
+	takerPRI := utils.ExtractUserPRIFromRequst(r)
+	resourcePRI := utils.GenPRI(option.ID, utils.Resource_type_image)
+
+	perm, err := getPermission(resourcePRI, takerPRI)
+	if utils.RunIfPickErr(err, ResourceNonExistErr_E)(hc.SendNotFoundErr) {
+		return
+	}
+
+	if utils.RunIfOK(!perm.canWrite(), hc.SendPermDeniedErr) {
+		return
+	}
+
+	_, err = db.Exec("update tResources set alias = ? where rID = ?", option.Name, option.ID)
 	utils.PanicIfErr(err)
 }
 
@@ -551,12 +676,81 @@ func paperListProvider(rw http.ResponseWriter, r *http.Request) {
 	utils.PanicIfErr(es.SendJSON(0, "", data))
 }
 
+func quotaProvider(wr http.ResponseWriter, r *http.Request) {
+	hu := utils.GenHandlerUtils(wr)
+	db := utils.GetMySqlDB()
+
+	userID := utils.ExtractUserIDFromRequst(r)
+	userPRI := utils.GenPRI(userID, utils.Resource_type_user)
+	var qr QuotaResult
+
+	row := db.QueryRow("select capcity, used from tQuotas where targetPRI = ?", userPRI)
+
+	err := row.Scan(&qr.Capcity, &qr.Used)
+	if utils.RunIfPickErr(err, sql.ErrNoRows)(hu.SendNotFoundErr) {
+		return
+	}
+	utils.PanicIfErr(err)
+
+	hu.SendJSON(0, "", qr)
+}
+
+// accounts
+func accountProvider(wr http.ResponseWriter, r *http.Request) {
+	hu := utils.GenHandlerUtils(wr)
+	db := utils.GetMySqlDB()
+
+	data := &AccountResult{}
+
+	userID := utils.ExtractUserIDFromRequst(r)
+
+	row := db.QueryRow("select id, nickname, email from tAccounts where id = ?", userID)
+	utils.PanicIfErr(row.Scan(&data.ID, &data.Nickname, &data.Email))
+
+	utils.PanicIfErr(hu.SendJSON(0, "", data))
+}
+func accountPatcherProvider(wr http.ResponseWriter, r *http.Request) {
+	hu := utils.GenHandlerUtils(wr)
+	db := utils.GetMySqlDB()
+
+	var option *AccountPatchOption
+
+	userID := utils.ExtractUserIDFromRequst(r)
+	utils.ExtractJsonBodyFromRequest(r, &option)
+
+	// check args
+	if utils.RunIfOK(option.Email != "" && !utils.IsEmail(option.Email), hu.SendOptionErr, hu.ByErrJSON(27)) {
+		// 参数不合法
+		return
+	}
+
+	holders := make([]string, 0)
+	values := make([]interface{}, 0)
+
+	if option.Nickname != "" {
+		holders = append(holders, "nickname = ?")
+		values = append(values, option.Nickname)
+	}
+	if option.Email != "" {
+		holders = append(holders, "email = ?")
+		values = append(values, option.Email)
+	}
+
+	holderQtr := strings.Join(holders, ", ")
+	values = append(values, userID)
+
+	qtr := fmt.Sprintf("update tAccounts set %s where id = ?", holderQtr)
+	_, err := db.Exec(qtr, values...)
+	utils.PanicIfErr(err)
+}
+
 func setupServer() {
 	httpServer := utils.NewNOZHTTPServer()
 
 	httpServer.HandleFunc(newImageProvider, "^/image", utils.Http_method_new)
 	httpServer.HandleFunc(imageProvider, "^/image", utils.Http_method_get)
 	httpServer.HandleFunc(imageRemoverProvider, "^/image", utils.Http_method_delete)
+	httpServer.HandleFunc(imageAliasSetterProvider, "^/image/alias", utils.Http_method_set)
 
 	httpServer.HandleFunc(newPaperProvider, "^/paper", utils.Http_method_new)
 	httpServer.HandleFunc(paperProvider, "^/paper", utils.Http_method_get)
@@ -568,6 +762,10 @@ func setupServer() {
 	httpServer.HandleFunc(paperListProvider, "^/paper/list", utils.Http_method_action)
 	httpServer.HandleFunc(imageListProvider, "^/image/list", utils.Http_method_action)
 
+	httpServer.HandleFunc(quotaProvider, "^/quota", utils.Http_method_get)
+	httpServer.HandleFunc(accountProvider, "^/account", utils.Http_method_get)
+	httpServer.HandleFunc(accountPatcherProvider, "^/account", utils.Http_method_patch)
+
 	utils.PanicIfErr(http.ListenAndServe(utils.GetServeHost(7703), httpServer))
 }
 
@@ -576,4 +774,5 @@ func main() {
 
 	setupStoreEnv()
 	setupServer()
+
 }
