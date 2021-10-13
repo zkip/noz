@@ -1,70 +1,139 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 
 	"noz.zkip.cc/utils"
 	"noz.zkip.cc/utils/model"
 )
 
-var UserDB = struct {
-	secret map[uint64]string
-	name   map[uint64]string
-	email  map[string]uint64
-}{
-	map[uint64]string{
-		1000: utils.EncodingStringMd5("pbo980"),
-	},
-	map[uint64]string{
-		1000: "zkip",
-	},
-	map[string]uint64{
-		"zkiplan@qq.com": 1000,
-	},
+const (
+	credential_kind_unknow = iota
+	credential_kind_email
+)
+
+type Credential struct {
+	kind   uint8
+	email  string
+	passwd string
+}
+
+func genCredentialByMasterMode(major, minor string) *Credential {
+	credential := &Credential{}
+	kind := resolveMajorKind(major)
+	switch kind {
+	case credential_kind_email:
+		credential.email = major
+		credential.passwd = minor
+	default:
+		//
+	}
+
+	credential.kind = kind
+	return credential
+}
+
+func resolveMajorKind(major string) uint8 {
+	if ok, _ := regexp.MatchString(`^([^@]+)@[^\.]+\.([^\.]+)$`, major); ok {
+		return credential_kind_email
+	}
+
+	return credential_kind_unknow
 }
 
 type WR = model.WhichResult
 type TR = model.TokenResult
 type R = model.Result
 
-func isValid(credential, secret string) bool {
-	userID, ok := getUserIDByEmail(credential)
-	return ok && UserDB.secret[userID] == secret
+type SecretWrongErr struct{}
+
+func (sw *SecretWrongErr) Error() string {
+	return "Secret wrong."
 }
 
-func getUserIDByEmail(email string) (uint64, bool) {
-	userID, ok := UserDB.email[email]
+type UnsupportedCredentialKindErr struct{}
 
-	return userID, ok
+func (sw *UnsupportedCredentialKindErr) Error() string {
+	return "Unsupported credential kind."
 }
 
-func whichProvider(rw http.ResponseWriter, r *http.Request) {
-	rjp := utils.ResponseJsonProvider{Rw: rw}
+type CredentialIncompleteErr struct{}
+
+func (ci *CredentialIncompleteErr) Error() string {
+	return "Credential incomplete."
+}
+
+func resolveUserID(credential *Credential) (uint64, error) {
+	var userID uint64
+	var passwd string
+
+	db := utils.GetMySqlDB()
+
+	if credential.kind != credential_kind_email {
+		return 0, &UnsupportedCredentialKindErr{}
+	}
+
+	row := db.QueryRow("select id, passwd from tAccounts where email = ?", credential.email)
+	err := row.Scan(&userID, &passwd)
+
+	if err == sql.ErrNoRows {
+		return 0, &utils.NotFoundErr{Name: "email"}
+	} else if err != nil {
+		return 0, err
+	}
+
+	if passwd != credential.passwd {
+		return 0, &SecretWrongErr{}
+	}
+
+	return userID, nil
+}
+
+var (
+	TokenExpiredErr_E         = &model.TokenExpiredErr{}
+	TokenCredentialEmptyErr_E = &model.TokenCredentialEmptyErr{}
+
+	NotFoundErr_E = &utils.NotFoundErr{}
+
+	CredentialIncompleteErr_E      = &CredentialIncompleteErr{}
+	UnsupportedCredentialKindErr_E = &UnsupportedCredentialKindErr{}
+	SecretWrongErr_E               = &SecretWrongErr{}
+)
+
+func whichProvider(wr http.ResponseWriter, r *http.Request) {
+	hu := utils.GenHandlerUtils(wr)
+
 	tokenCredential, err := utils.ExtractTokenCredential(r)
-	if _, ok := err.(*model.TokenCredentialEmptyErr); ok {
-		rjp.Send(&WR{Result: R{Code: 50, Msg: ""}, Which: 0}) // 没有指定token
+	if utils.RunIfPickErr(err, TokenCredentialEmptyErr_E)(hu.SendOptionErr, hu.ByErrJSON(50)) {
+		// 没有指定token
+		return
+	}
+	if utils.RunIfErr(err, hu.SendOptionErr) {
+		// unkown reason
 		return
 	}
 
-	token, err := utils.GetTokenValidation(tokenCredential)
-	if _, ok := err.(*model.TokenExpiredErr); ok {
-		rjp.Send(&WR{Result: R{Code: 51, Msg: ""}, Which: 0}) // token过期
+	token, err := utils.ParseToken(tokenCredential)
+	if utils.RunIfPickErr(err, TokenExpiredErr_E)(hu.ByErrJSON(51)) {
+		// token过期
 		return
 	}
-	if err, ok := err.(*model.TokenExpiredErr); ok {
-		rjp.Send(&WR{Result: R{Code: 52, Msg: err.Error()}, Which: 0}) // token解析错误
+	if utils.RunIfErr(err, hu.SendOptionErr, hu.ByErrJSON(52)) {
+		// token解析错误
 		return
 	}
-
-	fmt.Println(err)
 
 	which := utils.ExtractDataFromToken(token)
-	rjp.Send(&WR{Result: R{Code: 0, Msg: ""}, Which: which}) // token解析错误
+
+	wr.Header().Add("X-Authenticate-Which", utils.ToString(which))
+	wr.WriteHeader(901)
 }
 
-func authProvider(rw http.ResponseWriter, r *http.Request) {
+func extractCredential(r *http.Request) (*Credential, error) {
 	query := r.URL.Query()
 
 	credential := query.Get("credential")
@@ -73,52 +142,88 @@ func authProvider(rw http.ResponseWriter, r *http.Request) {
 	hasCredential := credential != ""
 	hasSecret := secret != ""
 
-	rjp := utils.ResponseJsonProvider{Rw: rw}
-
 	if !hasCredential || !hasSecret {
-		rjp.Send(&R{Code: 30, Msg: ""}) // 没有提供完整的认证信息
+		return nil, &CredentialIncompleteErr{}
+	}
+
+	result := genCredentialByMasterMode(credential, secret)
+
+	return result, nil
+}
+
+var RunIfPickErr = utils.RunIfPickErr
+var RunIfErr = utils.RunIfErr
+var RunIfOK = utils.RunIfOK
+
+func authProvider(rw http.ResponseWriter, r *http.Request) {
+	es := utils.GenHandlerUtils(rw)
+
+	credential, err := extractCredential(r)
+	if RunIfPickErr(err, CredentialIncompleteErr_E)(es.SendOptionErr, es.ByErrJSON(35)) {
+		// 没有提供完整的认证信息
 		return
 	}
 
-	userid, ok := getUserIDByEmail(credential)
-
-	tokenDetails, err := utils.CreateToken(userid)
-	if err != nil {
-		rjp.Send(&TR{Result: R{Code: 33}}) // token生成错误
+	userID, err := resolveUserID(credential)
+	if RunIfPickErr(err, UnsupportedCredentialKindErr_E)(es.SendOptionErr, es.ByErrJSON(34, utils.ToString(credential.kind))) {
+		// 不支持的凭据类型
+		return
+	}
+	if RunIfPickErr(err, NotFoundErr_E)(es.ByErrJSON(31)) {
+		// 该凭据没有被记录
+		return
+	}
+	if RunIfPickErr(err, SecretWrongErr_E)(es.SendOptionErr, es.ByErrJSON(32)) {
+		// 凭据与密钥不符
+		return
 	}
 
-	if !ok {
-		rjp.Send(&TR{Result: R{Code: 31}}) // 该凭据没有被记录
-
-	} else if !isValid(credential, secret) {
-		rjp.Send(&TR{Result: R{Code: 32}}) // 凭据与密钥不符
-
-	} else {
-		rjp.Send(&TR{
-			Result:       R{Code: 0, Msg: ""},
-			AccessToken:  tokenDetails.AccessToken,
-			RefreshToken: tokenDetails.RefreshToken,
-		})
+	tokenDetails, err := utils.CreateToken(userID)
+	if RunIfErr(err, es.SendOptionErr, es.ByErrJSON(33)) {
+		// token生成错误
+		return
 	}
-}
 
-// TODO: Refresh Token
-func accessProvider(rw http.ResponseWriter, r *http.Request) {
+	if RunIfErr(utils.RecordAccessUuid(userID, tokenDetails), es.SendInternalServerErr) {
+		return
+	}
 
+	es.SendJSON(0, "", &TR{
+		AccessToken:  tokenDetails.AccessToken,
+		RefreshToken: tokenDetails.RefreshToken,
+	})
 }
 
 func logoffProvider(rw http.ResponseWriter, r *http.Request) {
 
+	tokenCredential, err := utils.ExtractTokenCredential(r)
+	if err != nil {
+		panic(err)
+	}
+
+	token, err := utils.ParseToken(tokenCredential)
+	if err != nil {
+		panic(err)
+	}
+
+	userID := utils.ExtractDataFromToken(token)
+
+	redis := utils.GetRedisClient()
+	result, err := redis.Del(utils.ToString(userID)).Result()
+
+	fmt.Println(result, err)
 }
 
 func main() {
+	defer utils.Setup()()
 
-	// bec84dd977e71cb7642e0785b7a7d972
-	// fmt.Println(encodingStringMd5("pbo980"))
 	os.Setenv("ACCESS_SECRET", "fallingtosky")
 	os.Setenv("REFRESH_SECRET", "poppullpump")
 
-	http.HandleFunc("/", whichProvider)
-	http.HandleFunc("/auth", authProvider)
-	http.ListenAndServe(utils.GetServeHost(7000), nil)
+	httpServer := utils.NewNOZHTTPServer()
+
+	httpServer.HandleFunc(whichProvider, "/")
+	httpServer.HandleFunc(authProvider, "/auth")
+
+	http.ListenAndServe(utils.GetServeHost(7000), httpServer)
 }
