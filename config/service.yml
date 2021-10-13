@@ -20,5 +20,8 @@ routes:
     - ^/paper GET
     - ^/paper SET
     - ^/paper ACTION
+    - ^/quota GET
+    - ^/account GET
+    - ^/account PATCH
   auth-service:
     - ^/auth
