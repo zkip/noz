@@ -10,12 +10,10 @@ type Result struct {
 }
 
 type TokenResult struct {
-	Result
 	AccessToken  string
 	RefreshToken string
 }
 type WhichResult struct {
-	Result
 	Which uint64
 }
 

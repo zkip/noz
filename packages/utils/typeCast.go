@@ -8,7 +8,7 @@ import (
 func ToInterfaceSlice(x interface{}) []interface{} {
 	rx := reflect.ValueOf(x)
 	if rx.Kind() != reflect.Slice {
-		panic("toInterfaceSlice must be received a slice type.")
+		panic("ToInterfaceSlice must be received a slice type.")
 	}
 
 	r := make([]interface{}, rx.Len())
@@ -22,7 +22,7 @@ func ToInterfaceSlice(x interface{}) []interface{} {
 func ToStringSlice(x interface{}) []string {
 	rx := reflect.ValueOf(x)
 	if rx.Kind() != reflect.Slice {
-		panic("toInterfaceSlice must be received a slice type.")
+		panic("ToInterfaceSlice must be received a slice type.")
 	}
 
 	r := make([]string, rx.Len())
