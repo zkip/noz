@@ -1,3 +1,4 @@
+-- core internal
 CREATE TABLE tPermissionGroups(
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
   create_time DATETIME COMMENT 'create time',
@@ -14,15 +15,8 @@ CREATE TABLE tPermissions(
   resourcePRI VARCHAR(255) comment 'resource',
   kind VARCHAR(255) COMMENT 'kind'
 ) default charset utf8 comment '';
-CREATE TABLE tResources(
-  id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
-  create_time DATETIME COMMENT 'create time',
-  update_time DATETIME COMMENT 'update time',
-  ownerPRI varchar(255) comment 'owner',
-  alias VARCHAR(255) comment 'alias',
-  mimeType VARCHAR(255) comment 'mime type',
-  rID VARCHAR(255) NOT NULL comment 'resource ID'
-) default charset utf8 comment '';
+
+
 CREATE TABLE tAccounts(
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
   create_time DATETIME COMMENT 'create time',
@@ -30,4 +24,22 @@ CREATE TABLE tAccounts(
   nickname VARCHAR(255),
   email VARCHAR(255),
   passwd VARCHAR(255)
+) default charset utf8 comment '';
+CREATE TABLE tResources(
+  id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
+  create_time DATETIME COMMENT 'create time',
+  update_time DATETIME COMMENT 'update time',
+  ownerPRI varchar(255) comment 'owner',
+  alias VARCHAR(255) comment 'alias',
+  mimeType VARCHAR(255) comment 'mime type',
+  quotaUsage VARCHAR(255) comment 'quota usage',
+  rID VARCHAR(255) NOT NULL comment 'resource ID'
+) default charset utf8 comment '';
+CREATE TABLE tQuotas(
+  id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
+  create_time DATETIME COMMENT 'create time',
+  update_time DATETIME COMMENT 'update time',
+  targetPRI varchar(255) comment 'targetPRI',
+  capcity BIGINT UNSIGNED NOT NULL DEFAULT 0 comment 'capcity',
+  used BIGINT UNSIGNED NOT NULL DEFAULT 0 comment 'used'
 ) default charset utf8 comment '';
