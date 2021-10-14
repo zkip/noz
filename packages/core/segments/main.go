@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/twinj/uuid"
@@ -772,7 +773,167 @@ func setupServer() {
 func main() {
 	defer utils.Setup()()
 
-	setupStoreEnv()
-	setupServer()
+	// setupStoreEnv()
+	// setupServer()
 
+	test()
+
+}
+
+func newHierarchyRecord(parentID string, targetPRI string, name string) (string, error) {
+	db := utils.GetMySqlDB()
+	hierarchyID := genHierarchyID(targetPRI)
+
+	var err error
+
+	tx, err := db.Begin()
+	if err != nil {
+		return "", err
+	}
+
+	rollback := func(err error) {
+		if tx != nil {
+			if err := tx.Rollback(); err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	_, err = tx.Exec("insert into tHierarchy( ancestor, descendant, distance, targetPRI ) ( select ancestor, ?, distance + 1, ? from tHierarchy where descendant = ? )", hierarchyID, targetPRI, parentID)
+	if utils.RunIfErr(err, rollback) {
+		return "", err
+	}
+
+	_, err = tx.Exec("insert into tHierarchy( ancestor, descendant, distance, targetPRI ) values( ?, ?, 0, ? )", hierarchyID, hierarchyID, targetPRI)
+	if utils.RunIfErr(err, rollback) {
+		return "", err
+	}
+
+	_, err = tx.Exec("insert into tHierarchyData( hierarchyID, name ) values( ?, ? )", hierarchyID, name)
+	if utils.RunIfErr(err, rollback) {
+		return "", err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return "", nil
+	}
+
+	return hierarchyID, nil
+}
+
+func findChildren(hierarchyID string) ([]string, error) {
+	db := utils.GetMySqlDB()
+	var descendants = make([]string, 0)
+
+	rows, err := db.Query("select name from tHierarchyData where hierarchyID in (select descendant from tHierarchy where ancestor = ? and distance = 1)", hierarchyID)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var descendant string
+
+		err := rows.Scan(&descendant)
+		if err != nil {
+			return nil, err
+		}
+
+		descendants = append(descendants, descendant)
+	}
+
+	return descendants, nil
+}
+
+func findPath(hierarchyID string) ([]string, error) {
+	db := utils.GetMySqlDB()
+	var ancestors = make([]string, 0)
+
+	rows, err := db.Query("select name from tHierarchyData where hierarchyID in (select ancestor from tHierarchy where descendant = ? order by distance desc)", hierarchyID)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var descendant string
+
+		err := rows.Scan(&descendant)
+		if err != nil {
+			return nil, err
+		}
+
+		ancestors = append(ancestors, descendant)
+	}
+
+	return ancestors, err
+}
+
+func delete(hierarchyID string) error {
+	db := utils.GetMySqlDB()
+
+	var err error
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	rollback := func(err error) {
+		if tx != nil {
+			if err := tx.Rollback(); err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	_, err = db.Exec("delete from tHierarchy where descendant in (select * from (select descendant from tHierarchy where ancestor = ?) as _)", hierarchyID)
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+	_, err = db.Exec("delete from tHierarchyData where hierarchyID = ?", hierarchyID)
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func renameHierarchyRecord(hierarchyID string, name string) error {
+	db := utils.GetMySqlDB()
+	_, err := db.Exec("update tHierarchyData set name = ? where hierarchyID = ?", name, hierarchyID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func genHierarchyID(userPRI string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(userPRI+time.Now().String())))
+}
+
+func test() {
+	// var err error
+	// ownerPRI := "us/2"
+
+	// idRoot, _ := newHierarchyRecord("", ownerPRI, "crack")
+	// idPlanA, _ := newHierarchyRecord(idRoot, ownerPRI, "plan A")
+	// idCrashStock, _ := newHierarchyRecord(idPlanA, ownerPRI, "crash stock")
+	// newHierarchyRecord(idPlanA, ownerPRI, "field jump")
+	// idPlanB, _ := newHierarchyRecord(idRoot, ownerPRI, "plan B")
+	// newHierarchyRecord(idPlanB, ownerPRI, "run")
+
+	// fmt.Println(findPath("20046eb7d5ca154469c4d07cd0de5b61"))
+
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(id, "@@@@")
+
+	// err := remove("cff12c3f3a04205e657cdebb35a63dc0")
+	// utils.PanicIfErr(err)
+
+	// findDepth(2)
+	// fmt.Println(findChildren("bda78e4a601297d7eb9aa6d608e801c2"))
+	// findPath(3)
+
+	renameHierarchyRecord("bda78e4a601297d7eb9aa6d608e801c2", "Plan X")
 }
