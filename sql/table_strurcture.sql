@@ -26,14 +26,15 @@ CREATE TABLE tAccounts(
   passwd VARCHAR(255)
 ) default charset utf8 comment '';
 CREATE TABLE tResources(
-  id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
-  create_time DATETIME COMMENT 'create time',
-  update_time DATETIME COMMENT 'update time',
+  rID VARCHAR(255) NOT NULL comment 'resource ID',
   ownerPRI varchar(255) comment 'owner',
   alias VARCHAR(255) comment 'alias',
   mimeType VARCHAR(255) comment 'mime type',
   quotaUsage VARCHAR(255) comment 'quota usage',
-  rID VARCHAR(255) NOT NULL comment 'resource ID'
+  `hierarchyID` VARCHAR(255),
+  id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
+  create_time DATETIME COMMENT 'create time',
+  update_time DATETIME COMMENT 'update time'
 ) default charset utf8 comment '';
 CREATE TABLE tQuotas(
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
@@ -60,7 +61,8 @@ CREATE TABLE tHierarchy(
 CREATE TABLE tHierarchyData(
   `hierarchyID` VARCHAR(255) NOT NULL comment 'hierarchy ID',
   `name` VARCHAR(255) NOT NULL,
-  `resourcePRI` VARCHAR(255),
+  `order` INT UNSIGNED NOT NULL DEFAULT 0,
+  `size` INT UNSIGNED NOT NULL DEFAULT 0,
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
   create_time DATETIME COMMENT 'create time',
   update_time DATETIME COMMENT 'update time'

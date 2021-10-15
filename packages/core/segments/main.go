@@ -780,9 +780,16 @@ func main() {
 
 }
 
-func newHierarchyRecord(parentID string, targetPRI string, name string) (string, error) {
+func newHierarchyRecord(parentID string, targetPRI string, name string, order ...uint) (string, error) {
 	db := utils.GetMySqlDB()
 	hierarchyID := genHierarchyID(targetPRI)
+
+	isLastOrder := len(order) == 0
+
+	var _order uint = 0
+	if !isLastOrder {
+		_order = order[0]
+	}
 
 	var err error
 
@@ -809,13 +816,43 @@ func newHierarchyRecord(parentID string, targetPRI string, name string) (string,
 		return "", err
 	}
 
-	_, err = tx.Exec("insert into tHierarchyData( hierarchyID, name ) values( ?, ? )", hierarchyID, name)
+	/*
+		insert data
+	*/
+	ancestorSizeQtr := "select * from (select size from tHierarchyData where hierarchyID = ?) tmp"
+	// ensure order is in safe bound.(0-parent_size)
+	orderQtr := fmt.Sprintf("GREATEST(0, LEAST((%s), ?))", ancestorSizeQtr)
+	if isLastOrder {
+		orderQtr = fmt.Sprintf("%s where ? = 0", ancestorSizeQtr)
+	}
+	dataQtr := fmt.Sprintf("insert into tHierarchyData( hierarchyID, name, `order` ) values( ?, ?, ifnull((%s), 0) )", orderQtr)
+	_, err = tx.Exec(dataQtr, hierarchyID, name, parentID, _order)
 	if utils.RunIfErr(err, rollback) {
 		return "", err
 	}
 
-	if err = tx.Commit(); err != nil {
+	/*
+		update parent size
+	*/
+	_, err = tx.Exec("update tHierarchyData set size = size + 1 where hierarchyID = ?", parentID)
+	if utils.RunIfErr(err, rollback) {
 		return "", nil
+	}
+
+	/*
+		update siblings order
+	*/
+	if !isLastOrder {
+		idQtr := "select descendant from tHierarchy where ancestor = ? and distance = 1"
+		siblingsQtr := fmt.Sprintf("update tHierarchyData set `order` = `order` + 1 where `order` >= ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
+		_, err = tx.Exec(siblingsQtr, _order, hierarchyID, parentID)
+		if utils.RunIfErr(err, rollback) {
+			return "", err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return "", err
 	}
 
 	return hierarchyID, nil
@@ -885,11 +922,94 @@ func delete(hierarchyID string) error {
 		}
 	}
 
-	_, err = db.Exec("delete from tHierarchy where descendant in (select * from (select descendant from tHierarchy where ancestor = ?) as _)", hierarchyID)
+	// prepare order, parent_size and parent_ID
+	var order uint
+	var size uint
+	var parentID string
+	rows, err := tx.Query("select `order`, size, hierarchyID from tHierarchyData where hierarchyID = ? or hierarchyID = (select ancestor from tHierarchy where distance = 1 and descendant = ?)", hierarchyID, hierarchyID)
 	if utils.RunIfErr(err, rollback) {
 		return err
 	}
-	_, err = db.Exec("delete from tHierarchyData where hierarchyID = ?", hierarchyID)
+
+	noRecord := true
+	noParent := true
+
+	for rows.Next() {
+		var order_, size_ uint
+		var hID string
+
+		err := rows.Scan(&order_, &size_, &hID)
+		if utils.RunIfErr(err, rollback) {
+			return err
+		}
+
+		if hID == hierarchyID {
+			order = order_
+		} else {
+			parentID = hID
+			size = size_
+
+			noParent = false
+		}
+
+		noRecord = false
+	}
+
+	if noRecord {
+		return nil
+	}
+
+	isLastOrder := order == size-1
+
+	/*
+		update siblings order
+	*/
+	if !isLastOrder {
+		idQtr := "select descendant from tHierarchy where ancestor = ? and distance = 1"
+		siblingsQtr := fmt.Sprintf("update tHierarchyData set `order` = `order` - 1 where `order` > ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
+		_, err := tx.Exec(siblingsQtr, order, hierarchyID, parentID)
+		if utils.RunIfErr(err, rollback) {
+			return err
+		}
+	}
+
+	/*
+		update parent size
+	*/
+	if !noParent {
+		_, err = tx.Exec("update tHierarchyData set size = size - 1 where hierarchyID = ?", parentID)
+		if utils.RunIfErr(err, rollback) {
+			return err
+		}
+	}
+
+	/*
+		delete related data
+	*/
+	var hierarchyIDCondQtr = ""
+	var descendantCondQtr = ""
+	var seperater = ""
+	rows, err = tx.Query("select descendant from tHierarchy where ancestor = ?", hierarchyID)
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+
+	for rows.Next() {
+		var descendant string
+		err = rows.Scan(&descendant)
+		if utils.RunIfErr(err, rollback) {
+			return err
+		}
+		hierarchyIDCondQtr += seperater + fmt.Sprintf(`hierarchyID = "%s"`, descendant)
+		descendantCondQtr += seperater + fmt.Sprintf(`descendant = "%s"`, descendant)
+		seperater = " or "
+	}
+
+	_, err = tx.Exec(fmt.Sprintf("delete from tHierarchy where %s", descendantCondQtr))
+	if utils.RunIfErr(err, rollback) {
+		return err
+	}
+	_, err = tx.Exec(fmt.Sprintf("delete from tHierarchyData where %s", hierarchyIDCondQtr))
 	if utils.RunIfErr(err, rollback) {
 		return err
 	}
@@ -912,14 +1032,18 @@ func genHierarchyID(userPRI string) string {
 
 func test() {
 	// var err error
-	// ownerPRI := "us/2"
 
-	// idRoot, _ := newHierarchyRecord("", ownerPRI, "crack")
-	// idPlanA, _ := newHierarchyRecord(idRoot, ownerPRI, "plan A")
-	// idCrashStock, _ := newHierarchyRecord(idPlanA, ownerPRI, "crash stock")
-	// newHierarchyRecord(idPlanA, ownerPRI, "field jump")
-	// idPlanB, _ := newHierarchyRecord(idRoot, ownerPRI, "plan B")
-	// newHierarchyRecord(idPlanB, ownerPRI, "run")
+	// _, err = newHierarchyRecord("", ownerPRI, "crack")
+	// utils.PanicIfErr(err)
+
+	ownerPRI := "us/2"
+	idRoot, _ := newHierarchyRecord("", ownerPRI, "crack")
+	idPlanA, _ := newHierarchyRecord(idRoot, ownerPRI, "plan A")
+	newHierarchyRecord(idPlanA, ownerPRI, "crash stock")
+	newHierarchyRecord(idPlanA, ownerPRI, "field jump")
+	newHierarchyRecord(idPlanA, ownerPRI, "sky mesh", 1)
+	idPlanB, _ := newHierarchyRecord(idRoot, ownerPRI, "plan B")
+	newHierarchyRecord(idPlanB, ownerPRI, "run")
 
 	// fmt.Println(findPath("20046eb7d5ca154469c4d07cd0de5b61"))
 
@@ -928,12 +1052,12 @@ func test() {
 	// }
 	// fmt.Println(id, "@@@@")
 
-	// err := remove("cff12c3f3a04205e657cdebb35a63dc0")
+	// err := delete("4b09dec32534cf1c87c290d2c17287cd")
 	// utils.PanicIfErr(err)
 
 	// findDepth(2)
 	// fmt.Println(findChildren("bda78e4a601297d7eb9aa6d608e801c2"))
 	// findPath(3)
 
-	renameHierarchyRecord("bda78e4a601297d7eb9aa6d608e801c2", "Plan X")
+	// renameHierarchyRecord("bda78e4a601297d7eb9aa6d608e801c2", "Plan X")
 }
