@@ -5,6 +5,7 @@ getway: getway-service
 
 non-auth:
   - ^/auth
+  - tb0-service
 
 routes:
   tb0-service:
@@ -20,6 +21,10 @@ routes:
     - ^/paper GET
     - ^/paper SET
     - ^/paper ACTION
+    - ^/hierarchy_record NEW
+    - ^/hierarchy_record DEL
+    - ^/hierarchy_record SET
+    - ^/hierarchy_record ACTION
     - ^/quota GET
     - ^/account GET
     - ^/account PATCH
