@@ -108,7 +108,7 @@ func whichProvider(wr http.ResponseWriter, r *http.Request) {
 	hu := utils.GenHandlerUtils(wr)
 
 	tokenCredential, err := utils.ExtractTokenCredential(r)
-	if utils.RunIfPickErr(err, TokenCredentialEmptyErr_E)(hu.SendOptionErr, hu.ByErrJSON(50)) {
+	if utils.RunIfPickErr(err, TokenCredentialEmptyErr_E)(hu.ByErrJSON(50), hu.SendPermDeniedErr) {
 		// 没有指定token
 		return
 	}
