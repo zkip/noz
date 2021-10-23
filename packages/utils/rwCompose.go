@@ -319,7 +319,7 @@ func ExtractDynamicRouteID(pattern string, r *http.Request) string {
 	rxp := regexp.MustCompile(pattern)
 	c := rxp.FindSubmatch([]byte(r.URL.Path))
 	id := string(c[1])
-	return id
+	return strings.TrimSpace(id)
 }
 
 func RunIfErr(err error, fns ...ErrHandler) bool {
@@ -420,6 +420,10 @@ func (hu *HandlerUtils) SendNotFoundErr(err error) {
 }
 func (hu *HandlerUtils) SendPermDeniedErr(err error) {
 	hu.wr.WriteHeader(http.StatusForbidden)
+}
+func (hu *HandlerUtils) SendIllegalJsonOptionErr(err error) {
+	hu.wr.WriteHeader(http.StatusBadRequest)
+	hu.SendJSON(17, "")
 }
 func (hu *HandlerUtils) ByErrJSON(code int, msg ...string) ErrHandler {
 	_msg := ""
