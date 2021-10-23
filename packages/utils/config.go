@@ -62,7 +62,7 @@ func ResolveMySqlServiceHost() *url.URL {
 	return u
 }
 
-func ResolveService(r *http.Request) (*url.URL, error) {
+func ResolveService(r *http.Request) (string, *url.URL, error) {
 	paths := []string{}
 	patternServiceMap := map[string]string{}
 	for _, routeItem := range config.serviceConfig.Routes {
@@ -114,7 +114,7 @@ func ResolveService(r *http.Request) (*url.URL, error) {
 	if matchedServiceName != "" {
 		ip, err := ResolveIPByServiceName(matchedServiceName)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		fmt.Println("Mathched service name: ", matchedServiceName, ip)
 		portString := ToString(config.portsConfig[matchedServiceName])
@@ -122,10 +122,10 @@ func ResolveService(r *http.Request) (*url.URL, error) {
 		if rewritePath {
 			cu.Path = r.URL.Path
 		}
-		return cu, nil
+		return matchedServiceName, cu, nil
 	}
 
-	return cu, nil
+	return matchedServiceName, cu, nil
 }
 
 func ResolveIPByServiceName(serviceName string) (string, error) {
@@ -136,10 +136,14 @@ func ResolveIPByServiceName(serviceName string) (string, error) {
 	return matchedIPPool[0], nil
 }
 
-func IsURLAuthNeednt(u *url.URL) bool {
+func IsURLAuthNeednt(servicename string, u *url.URL) bool {
 	paths := config.serviceConfig.NonAuth
 
 	for i := len(paths); i > 0; i-- {
+		if paths[i-1] == servicename {
+			return true
+		}
+
 		if ok, _ := regexp.MatchString(paths[i-1], u.Path); ok {
 			return true
 		}

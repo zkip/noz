@@ -58,6 +58,7 @@ func getValidation(r *http.Request, authService *url.URL) *ValidationAuth {
 
 var necessary_transfer_headers = map[string]bool{
 	"Content-Type": true,
+	"Cookie":       true,
 }
 
 func transferResponse(target *http.Response, dest http.ResponseWriter) {
@@ -73,6 +74,8 @@ func transferResponse(target *http.Response, dest http.ResponseWriter) {
 	if err != nil {
 		panic(err)
 	}
+
+	dest.WriteHeader(target.StatusCode)
 }
 
 func main() {
@@ -83,13 +86,13 @@ func main() {
 	fmt.Println("Server active on: ", serveHost)
 
 	err := http.ListenAndServe(serveHost, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		serviceURL, err := utils.ResolveService(r)
+		servicename, serviceURL, err := utils.ResolveService(r)
 		if err != nil {
 			rw.WriteHeader(http.StatusBadGateway)
 			panic(err)
 		}
 		fmt.Println("Service URL: ", serviceURL, " Origin: ", r.URL)
-		if utils.IsURLAuthNeednt(r.URL) {
+		if utils.IsURLAuthNeednt(servicename, r.URL) {
 			proxy := httputil.NewSingleHostReverseProxy(serviceURL)
 			proxy.ServeHTTP(rw, r)
 
