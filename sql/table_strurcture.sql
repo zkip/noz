@@ -40,7 +40,7 @@ CREATE TABLE tQuotas(
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
   create_time DATETIME COMMENT 'create time',
   update_time DATETIME COMMENT 'update time',
-  targetPRI varchar(255) comment 'targetPRI',
+  targetPRI varchar(255) comment 'target PRI',
   capcity BIGINT UNSIGNED NOT NULL DEFAULT 0 comment 'capcity',
   used BIGINT UNSIGNED NOT NULL DEFAULT 0 comment 'used'
 ) default charset utf8 comment '';
@@ -53,7 +53,7 @@ CREATE TABLE tHierarchy(
   ancestor VARCHAR(255) NOT NULL comment 'ancestor',
   descendant VARCHAR(255) NOT NULL comment 'descendant',
   distance BIGINT UNSIGNED NOT NULL comment 'distance',
-  targetPRI VARCHAR(255) NOT NULL comment 'user PRI',
+  targetPRI VARCHAR(255) NOT NULL comment 'target PRI',
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
   create_time DATETIME COMMENT 'create time',
   update_time DATETIME COMMENT 'update time'
@@ -63,6 +63,7 @@ CREATE TABLE tHierarchyData(
   `name` VARCHAR(255) NOT NULL,
   `order` INT UNSIGNED NOT NULL DEFAULT 0,
   `size` INT UNSIGNED NOT NULL DEFAULT 0,
+  `targetPRI` VARCHAR(255) NOT NULL comment 'target PRI',
   id BIGINT UNSIGNED NOT NULL primary key AUTO_INCREMENT comment 'primary key',
   create_time DATETIME COMMENT 'create time',
   update_time DATETIME COMMENT 'update time'
