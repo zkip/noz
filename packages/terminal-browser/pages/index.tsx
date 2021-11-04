@@ -53,10 +53,6 @@ function genTentBlock(data: object) {
     Object.values(m).map(put);
     Object.values(m).map(maxOrder);
 
-    console.log("++++++++++++++");
-
-    console.log(om);
-
     const orderCaches = new Map<string, number>();
 
     const ds = Object.values(m);
@@ -89,10 +85,13 @@ function genTentBlock(data: object) {
 
         for (const [i, n] of _m.entries()) {
             rs.set(m[i].Name, n);
+            if (m[i].Name === "crash stock" || m[i].Name === "plan A") {
+                console.log(m[i].ID, m[i].Name);
+            }
         }
         return rs;
     };
-    console.log(debug(orderCaches), ">>>>>>>>>>>>>");
+    debug(orderCaches);
 
     return ds
         .sort((a, b: HierarchyRecord) => {
@@ -117,7 +116,7 @@ export default function Home() {
                 method: "ACTION",
                 headers: {
                     Authorization:
-                        "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdXVpZCI6ImMwMjdjNzY2LTA2OWYtNDRlNC1hZGRlLTRjY2I2OGQwMTEzYSIsImF1dGhvcml6ZWQiOnRydWUsImV4cCI6MTYzNzI5OTMwOSwidXNlcl9pZCI6MX0.2PURiNGehNl-h2Wz8gl9er_wu367hhNlsi12Cwe-lpg",
+                        "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdXVpZCI6ImUwOTgzNDY4LTllZGEtNDJjYS1iNzk2LTc1ZGQ1MDYyZWQxYSIsImF1dGhvcml6ZWQiOnRydWUsImV4cCI6MTYzODYzNjIwNywidXNlcl9pZCI6MX0.XPrGFITXh92ZkFDQqz47x1meWfycW5dlgV3gA6Lrrgk",
                 },
             });
             const { Data } = await resp.json();
@@ -130,7 +129,7 @@ export default function Home() {
     }, []);
     // return <Editor></Editor>;
 
-    return <div className="SFD">{blocks}</div>;
+    return <div className="tree">{blocks}</div>;
 }
 
 mapLayout(Home, CommonLayout);
