@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -292,59 +293,66 @@ func moevHierarchyRecord(hierarchyID string, destHID string, order uint) error {
 	newOrder = order
 	newParentID = destHID
 
-	qtr = strings.Join([]string{
-		"select d.size, d.order, t.descendant, d.hierarchyID from tHierarchyData d",
-		"join tHierarchy t on t.ancestor = d.hierarchyID and t.distance = 1",
-		"and (t.descendant = ? or t.descendant = ?)",
-	}, " ")
-	rows, err := tx.Query(qtr, hierarchyID, destHID)
+	// find pastParentRecord, newParentRecord and pastRecord
+	qtr = `-- move before query
+		select d.size, d.order, d.hierarchyID, t.descendant from tHierarchyData d
+		join tHierarchy t
+		on ( t.ancestor = d.hierarchyID and t.distance = 1 and (	-- query parent
+			t.descendant = ?										-- pastParentRecord
+		))
+		or ( t.descendant = d.hierarchyID and t.distance = 0 and (	-- query self
+				d.hierarchyID = ?									-- newParentRecord
+			or	d.hierarchyID = ?									-- pastRecord
+		))
+	`
+	rows, err := tx.Query(qtr, hierarchyID, destHID, hierarchyID)
 	if utils.RunIfErr(err, rollback) {
 		return err
 	}
 
 	for rows.Next() {
 		var size, order uint
-		var ID, parentID string
-		err := rows.Scan(&size, &order, &ID, &parentID)
+		var ID, PID string
+		err := rows.Scan(&size, &order, &ID, &PID)
 		if utils.RunIfErr(err, rollback) {
 			return err
 		}
 
-		if ID == hierarchyID {
+		if PID != ID { // pastParentRecord
 			pastSiblingCount = size
-			pastParentID = parentID
-			pastOrder = order
+			pastParentID = ID
+			fmt.Println("pastParentRecord: ", pastSiblingCount)
 
 			c++
-		}
-
-		if ID == destHID {
+		} else if ID == destHID { // newParentRecord
 			newSiblingCount = size
+			fmt.Println("newParentRecord: ", newSiblingCount)
+
+			c++
+		} else if ID == hierarchyID { // pastRecord
+			pastOrder = order
+			fmt.Println("pastRecord: ", pastOrder)
 
 			c++
 		}
 
 	}
 
-	var isSafeUpdate = c == 2
+	var isSafeUpdate = c == 3
 
 	if utils.RunIfOK(!isSafeUpdate, rollback) {
 		// Unsupported change top record position
 		return &UnsafeMoveErr{}
 	}
 
-	if newOrder > newSiblingCount {
-		newOrder = newSiblingCount - 1
+	if newOrder >= newSiblingCount {
+		newOrder = newSiblingCount
 	}
+
+	isSameParent := pastParentID == newParentID
 
 	/*
 		rebuild relation. ref from https://www.percona.com/blog/2011/02/14/moving-subtrees-in-closure-table
-
-		delete a from tHierarchy as a
-		join tHierarchy as d on a.descendant = d.descendant
-		left join tHierarchy as x
-		on x.ancestor = d.ancestor and x.descendant = a.ancestor
-		where d.ancestor = 'e6f3569befd69048c31cb62f8251eb2f' and x.ancestor is null;
 	*/
 	qtr = strings.Join([]string{
 		"delete a from tHierarchy as a",
@@ -358,14 +366,6 @@ func moevHierarchyRecord(hierarchyID string, destHID string, order uint) error {
 		return err
 	}
 
-	/*
-		insert into tHierarchy (ancestor, descendant, distance)
-		select supertree.ancestor, subtree.descendant,
-		supertree.distance+subtree.distance+1
-		from tHierarchy as supertree join tHierarchy as subtree
-		where subtree.ancestor = 'e6f3569befd69048c31cb62f8251eb2f'
-		and supertree.descendant = '4167590ae540840dd4b43908f9947cfa';
-	*/
 	qtr = strings.Join([]string{
 		"insert into tHierarchy (ancestor, descendant, distance, targetPRI)",
 		"select supertree.ancestor, subtree.descendant,",
@@ -382,23 +382,46 @@ func moevHierarchyRecord(hierarchyID string, destHID string, order uint) error {
 	isNewLastOne := newSiblingCount-newOrder == 1
 	isPastLastOne := pastSiblingCount-pastOrder == 1
 
-	// update new siblings order
-	if !isNewLastOne {
+	if isSameParent {
+		// avoid dirty writes
+
+		orders := []int{int(pastOrder), int(newOrder)}
+		sort.Ints(orders)
+
+		minOrder := orders[0]
+		maxOrder := orders[1]
+
+		delta := -1
+		if pastOrder > newOrder {
+			delta = 1
+		}
+
 		idQtr := "select descendant from tHierarchy where ancestor = ? and distance = 1"
-		qtr = fmt.Sprintf("update tHierarchyData set `order` = `order` + 1 where `order` >= ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
-		_, err = tx.Exec(qtr, order, hierarchyID, destHID)
+		qtr = fmt.Sprintf("update tHierarchyData set `order` = `order` + ? where `order` >= ? and `order` <= ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
+		_, err = tx.Exec(qtr, delta, minOrder, maxOrder, hierarchyID, destHID)
 		if utils.RunIfErr(err, rollback) {
 			return err
 		}
-	}
+	} else {
 
-	// update past siblings order
-	if !isPastLastOne {
-		idQtr := "select descendant from tHierarchy where ancestor = ? and distance = 1"
-		qtr = fmt.Sprintf("update tHierarchyData set `order` = `order` - 1 where `order` > ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
-		_, err = tx.Exec(qtr, pastOrder, hierarchyID, pastParentID)
-		if utils.RunIfErr(err, rollback) {
-			return err
+		// update new siblings order
+		if !isNewLastOne {
+			idQtr := "select descendant from tHierarchy where ancestor = ? and distance = 1"
+			qtr = fmt.Sprintf("update tHierarchyData set `order` = `order` + 1 where `order` >= ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
+			_, err = tx.Exec(qtr, order, hierarchyID, destHID)
+			if utils.RunIfErr(err, rollback) {
+				return err
+			}
+		}
+
+		// update past siblings order
+		if !isPastLastOne {
+			idQtr := "select descendant from tHierarchy where ancestor = ? and distance = 1"
+			qtr = fmt.Sprintf("update tHierarchyData set `order` = `order` - 1 where `order` > ? and hierarchyID != ? and hierarchyID in (%s)", idQtr)
+			_, err = tx.Exec(qtr, pastOrder, hierarchyID, pastParentID)
+			if utils.RunIfErr(err, rollback) {
+				return err
+			}
 		}
 	}
 
@@ -411,7 +434,7 @@ func moevHierarchyRecord(hierarchyID string, destHID string, order uint) error {
 	/*
 		update sizes of affected parent
 	*/
-	if newParentID != pastParentID {
+	if !isSameParent {
 		_, err = tx.Exec("update tHierarchyData set size = size + 1 where hierarchyID = ?", newParentID)
 		if utils.RunIfErr(err, rollback) {
 			return err
